@@ -1,0 +1,14 @@
+bin/
+obj/
+
+original_source/
+runtimes/
+fonts/
+
+*.txt
+*.gnu
+*.png
+*.html
+*.so
+*.dll
+*.dy

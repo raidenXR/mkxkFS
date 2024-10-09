@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="src/serializers.fs" />
+    <Compile Include="src/Gnuplot.fs" />
+    <Compile Include="src/expressions.fs" />
+    <Compile Include="src/Lexer.fs" />
+    <Compile Include="src/Parser.fs" />
+    <Compile Include="src/FnGenerator.fs" />
+  </ItemGroup>
+
+</Project>
