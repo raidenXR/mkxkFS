@@ -118,12 +118,12 @@ module ExprTree =
 
         override x.ToString() =
             match x with 
-            | Number n -> "Number:"
-            | Constant c -> "Constant:"
-            | Symbol s -> "Symbol:"
+            | Number n -> "Number: " + n.Value.ToString("N4")
+            | Constant c -> $"Constant: {c.Value}"
+            | Symbol s -> $"Symbol: {s.Value}"
             | Assignment (l, r) -> "Assignment"
-            | Binary (l, r, op) -> "Binary"
-            | Unary (o, op) -> "Unary"
+            | Binary (l, r, op) -> $"Binary: {string op.Value}"
+            | Unary (o, op) -> $"Unary: {string op.Value}"
             | Parenthesized _ -> "Parenthesised"
             | Braces b -> "Braces"
             | Frac (u, l) -> "Frac"
@@ -170,6 +170,28 @@ module ExprTree =
         | ExprNone -> [] 
 
 
+    let private equal a b =
+        match a, b with
+        | Number na, Number nb -> na.Value = nb.Value
+        | Constant ca, Constant cb -> ca.Value = cb.Value
+        | Symbol va, Symbol vb -> va.Value = vb.Value
+        | Binary (_, _, aop), Binary (_, _, bop) -> aop.Value = bop.Value
+        | Unary (_, aop), Unary (_, bop) -> aop.Value = bop.Value
+        | Assignment (la,ra), Assignment (lb,rb) -> la = lb
+        | Parenthesized _, Parenthesized _ -> true
+        | Braces _, Braces _ -> true
+        | Frac _, Frac _ -> true
+        | Enclosure _, Enclosure _ -> true
+        | Sum _, Sum _ -> true
+        | Prod _, Prod _ -> true
+        | Int _, Int _ -> true
+        | Diff _, Diff _ -> true
+        | ODE _, ODE _ -> true
+        | PDE _, PDE _ -> true
+        | _ -> false
+
+
+    /// counts the total number of nodes of the ExprTree - AST
     let count f :int =
         // let mutable acc = 0
         // let rec count_nodes f =
@@ -187,7 +209,8 @@ module ExprTree =
         count_nodes f
         acc
 
-
+    
+    /// returns the nodes of the ExprTree - AST as an Expr seq
     let nodes f :seq<Expr> =
         // let rec traverse nodes f =
         //     match children f with
@@ -203,7 +226,37 @@ module ExprTree =
                 i <- i + 1
                 tranversal n
         tranversal f
-        Seq.ofArray buffer[0..(i - 1)]
+        buffer[0..i - 1]
+        // Seq.ofArray buffer[0..(i - 1)]
+
+
+    /// compares two ExprTrees - ASTs and returns the different nodes
+    let compare a b =
+        let a' = nodes a
+        let b' = nodes b
+        Seq.zip a' b' |> Seq.filter (fun (A, B) -> not (equal A B))
+
+
+    let copy f :Expr =
+        let rec copy_node = function
+            | Number n -> Number (ref n.Value)
+            | Constant c -> Constant (ref c.Value)
+            | Symbol s -> Symbol (ref s.Value)
+            | Assignment (l, r) -> Assignment (l, copy_node r)
+            | Binary (l, r, op) -> Binary (copy_node l, copy_node r, ref op.Value)
+            | Unary (o, op) -> Unary (copy_node o, ref op.Value)
+            | Parenthesized p -> Parenthesized (copy_node p)
+            | Braces b -> Braces (copy_node b)
+            | Frac (u, l) -> Frac (copy_node u, copy_node l)
+            | Enclosure e -> Enclosure (copy_node e)
+            | Sum (i, n, f) -> Sum (copy_node i, copy_node n, copy_node f)
+            | Prod (i, n, f) -> Prod (copy_node i, copy_node n, copy_node f)
+            | Int (a, b, f) -> Int (copy_node a, copy_node b, copy_node f)
+            | Diff (a, b) -> Diff (copy_node a, copy_node b)
+            | ODE (a, b) -> ODE (copy_node a, copy_node b)
+            | PDE (a, b) -> PDE (copy_node a, copy_node b)
+            | _ -> failwith "node not implemented yet"
+        copy_node f
 
 
     let latex f :string =
@@ -352,6 +405,7 @@ module ExprTree =
         |> Array.filter (function | Unary _ -> true | _ -> false)
         |> Array.map (function | Unary (o,op) -> (o, op) | _ -> failwith "expr is not Unary")
 
+        
         
     // #########################################################
     // ONLY the nodes that containt ref<values> matter to mutate!!!

@@ -63,35 +63,58 @@ Console.WriteLine(count f6)
 // check that binaties function is working
 let bs = ExprTree.binaries f6
 let cs = ExprTree.constants f6
-Console.WriteLine("binaries len: {0}", (Seq.length bs))
-Console.WriteLine("binaries len: {0}", (Seq.length cs))
+let vs = ExprTree.variables f6
+Console.WriteLine("\n--binaries len: {0}", (Seq.length bs))
+Console.WriteLine("--constants len: {0}", (Seq.length cs))
+Console.WriteLine("--variables len: {0}", (Seq.length vs))
+Console.WriteLine ""
+
 
 // check that mutation via ref cells is working
-Console.WriteLine("f6 before mutuation\n {0}", (latex f6))
+// check that binder and evaluation work
+let f6_before = copy f6
 let (_, _, op) = bs[1]
 op.Value <- Cdot
-let c = cs[0]
-c.Value <- "k_A"
-Console.WriteLine("f6 after mutation\n {0}", (latex f6))
+cs[0].Value <- "k_A"
+vs[1].Value <- "C_A"
+let res6_before = Evaluation.eval cons vars (Map []) "f(x)" (Binder.bind f6_before) // before mutation
+let res6        = Evaluation.eval cons vars (Map []) "f(x)" (Binder.bind f6) // after mutation
+printfn "\n--test mutation"
+printfn "f6 before: eval: %g \n - %s" res6_before (latex f6_before)
+printfn "f6 after : eval: %g \n - %s" res6 (latex f6)
+printfn "\n"
+for (i, j) in (compare f6_before f6) do printfn "%s , %s" (string i) (string j)
 
-// check that binder and evaluation work
-let bf6 = Binder.bind f6
-let res6 = Evaluation.eval cons vars (Map []) "f(x)" bf6 
-Console.WriteLine("eval f6: {0}", res6)
 
 // check that random fn generation works
-let f2 = FnGeneration.generatefn "f(x)" cons.Keys vars.Keys [] 0.91 103.45 40
+let mutable f2 = FnGeneration.generatefn "f(x)" cons.Keys vars.Keys [] 0.91 103.45 40
+while (ExprTree.variables f2).Length < 2 do 
+    // ensure that random generated fn has at least one variable (besides f(x))
+    f2 <- FnGeneration.generatefn "f(x)" cons.Keys vars.Keys [] 0.91 103.45 40
+((ExprTree.variables f2)[1]).Value <- "C_A"   // ensure that specific variable-target exists
+printfn "\n--random generated fn"
 Console.WriteLine(latex f2)
 
 // check the binder and evaluation on ranmdom generated fns
-let bf2 = Binder.bind f2
-let res2 = Evaluation.eval cons vars (Map []) "f(x)" bf2
-Console.WriteLine("eval f2: {0}", res2)
+let res2 = Evaluation.eval cons vars (Map []) "C_A" (Binder.bind f2)
+Console.WriteLine("\n--test evaluation\neval f2: {0}\n", res2)
 
-// let f3 = FnGeneration.generateFn "f(x)" cons.Keys vars.Keys [] 0.91 103.45
-// let f4 = FnGeneration.generateFn "f(x)" cons.Keys vars.Keys [] 0.91 103.45
-// let f5 = FnGeneration.generateFn "f(x)" cons.Keys vars.Keys [] 0.91 103.45
 
-// let fns = [f0; f1; f2; f3; f4; f5; f5; f6]
-
+// check that optimization works
+let xseries = [|for i in 0..100 -> float i|]
+let yseries = [|for i in 0..100 -> 0.32 * float i + 34.6|]
+let args: Mutation.OptimizationDesc  = {
+    constants = cons
+    variables = vars
+    functions = Map []
+    x = xseries
+    y = yseries
+    err = 10    
+}
+let fret = Mutation.optimizefn args 100 0.10 1000. "C_A" f2
+let res_org = Evaluation.eval cons vars (Map []) "f(x)" (Binder.bind f2)
+let res_opt = Evaluation.eval cons vars (Map []) "f(x)" (Binder.bind fret)
+printfn "-original  fn  -eval: %g \n %s\n" res_org (latex f2)
+printfn "-optimized fn  -eval: %g \n %s\n" res_opt (latex fret)
+for (i, j) in (compare f2 fret) do printfn "%s , %s" (string i) (string j)
 
