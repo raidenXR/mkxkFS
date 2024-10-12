@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="src/Colors.fs" />
+    <Compile Include="src/Views.fs" />
+    <Compile Include="src/Renderer.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.0.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.0.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.6" />
+    <PackageReference Include="Avalonia.FuncUI" Version="1.1.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.6" />
+    <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.6" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\SKCharts\SKCharts\SKCharts.csproj" />
+    <ProjectReference Include="..\..\..\src\SKCharts\SKCharts.Avalonia\src\SKCharts.Avalonia.csproj" />
+    <ProjectReference Include="..\..\..\src\Notation\Notation\Notation.csproj" />
+    <ProjectReference Include="..\MKXK\mkxkFS.fsproj" />
+  </ItemGroup>
+
+</Project>
