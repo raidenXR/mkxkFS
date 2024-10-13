@@ -13,17 +13,17 @@ open RendererFS
 // create some table of variables
 let variables = [
     "a0", 1, 20
-    "a1", 1, 20
-    "a2", 1, 20
+    "a1", 1, 30
+    "a2", 1, 40
     "a3", 1, 20
-    "T", 1, 20
-    "C_a", 1, 20
+    "T", 1, 30
+    "C_a", 1, 40
     "C_{\\beta}", 1, 20
-    "C_A", 1, 20
-    "C_B", 1, 20
+    "C_A", 1, 30
+    "C_B", 1, 40
     "C_{\\gamma}", 1, 20
-    "t", 1, 20
-    """C_{AB}""", 1, 20
+    "t", 1, 30
+    """C_{AB}""", 1, 40
 ]
 let vars = variables |> List.map (fun (s, a, b) -> (s, {A = a; B = b; V = ValueNone })) |> Map.ofList
 
@@ -64,7 +64,9 @@ let x = [|for i in 0..40 -> float i|]
 
 let models = [
     Model2.createpoints x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
+    // Model2.createline x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
     Model2.createpoints x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
+    // Model2.createline x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
     Model2.createTeXModel cons vars fns f0str "C_A" x Colors.Brown 2.0f
     Model2.createTeXModel cons vars fns f1str "C_A" x Colors.Green 2.0f
     Model2.createTeXModel cons vars fns f6str "C_A" x Colors.Blue 2.0f
@@ -87,7 +89,7 @@ printfn "model3: %A, %d" _models[3].Bounds _models[3].VerticesCount
 printfn "model4: %A, %d" _models[4].Bounds _models[4].VerticesCount
 
 
-// let r = Renderer(cons, vars, fns, models)
-// r.Run()
+let r = Renderer(cons, vars, fns, models)
+r.Run()
 
-// Console.ReadKey ()
+Console.ReadKey ()

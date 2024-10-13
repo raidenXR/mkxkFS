@@ -66,7 +66,7 @@ module Model2 =
         let xvalues = m.Xvalues
         let yvalues = m.Yvalues
         let N = xvalues.Length
-        let n = N / 2 + 2
+        let n = N / 2 + 1
         let dx = (vars[t].B - vars[t].A) / float n
 
         let mutable x = vars[t].A
@@ -97,7 +97,7 @@ module Model2 =
         let b = Binder.bind f
         let y = Array.zeroCreate<float> x.Length
         let m = match (createline x y c s) with | Model2D m -> m | _ -> failwith "improper type"
-        // evalModel cons vars fns t b m
+        evalModel cons vars fns t b m
         TeXModel (tex, f, b, m)
 
 
@@ -277,16 +277,16 @@ module Views =
                                         target <- t
                                         c.Chart.XImg <- (Converter.image target)        
 
-                                        _vars
-                                        |> Array.except [|(t, v)|]
-                                        |> Array.map (fun (x, _) -> x,variables[x])
-                                        |> vars.Set
+                                        // _vars
+                                        // |> Array.except [|(t, v)|]
+                                        // |> Array.map (fun (x, _) -> x,variables[x])
+                                        // |> vars.Set
 
                                         // when event triggers, sliders are created anew
                                         // restore the values of the variables map
                                         // to min to match sliders values
-                                        vars.Current
-                                        |> Seq.iter (fun (x, _) -> variables[x].V <- ValueSome variables[x].A)
+                                        // vars.Current
+                                        // |> Seq.iter (fun (x, _) -> variables[x].V <- ValueSome variables[x].A)
                                        
                                         for (tex, f, b, m) in tex_models do
                                             if target <> String.Empty then
@@ -322,7 +322,8 @@ module Views =
                                 ListBox.dataItems vars.Current
                                 ListBox.itemTemplate (
                                     DataTemplateView<string * Variable>.create (fun (s, v) -> 
-                                        // let _slider = ctx.useState<Slider> null
+                                        // let _slider = ctx.useState<Slider>(null, renderOnChange = false)
+                                        // let _slider_value = ctx.useState(v.A, renderOnChange = true)
                                         Grid.create [
                                             Grid.columnDefinitions "100, 140, 200"
                                             Grid.children [
@@ -335,15 +336,17 @@ module Views =
                                                 // View.createWithOutlet _slider.Set Slider.create [
                                                     // Slider.init _slider.Set
                                                 Slider.create [
+                                                    // Slider.init _slider.Set
                                                     Slider.column 1
                                                     Slider.width 100
                                                     Slider.minimum v.A
                                                     Slider.maximum v.B    
                                                     Slider.onValueChanged (fun d ->
                                                         variables[s].V <- ValueSome d
+                                                        // _slider_value.Set d
 
                                                         for (tex, f, b, m) in tex_models do
-                                                            if target <> String.Empty && tex.Contains(s) then
+                                                            if target <> String.Empty && s <> target && tex.Contains(s) then
                                                                 evalModel constants variables functions target b m
                                                         c.Chart.NormalizeModels() 
                                                     )
@@ -352,7 +355,7 @@ module Views =
                                                     TextBlock.column 2
                                                     TextBlock.width 100
                                                     TextBlock.maxWidth 100
-                                                    // TextBlock.text (string _slider.Current.Value)
+                                                    // TextBlock.text (_slider_value.Current.ToString("N4"))
                                                 ]
                                             ]
                                         ]
