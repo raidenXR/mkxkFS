@@ -59,7 +59,35 @@ let fns =
     ] |> Map.ofList 
 
 
-let r = Renderer(cons, vars, fns, 100)
-r.Run()
 
-Console.ReadKey ()
+let x = [|for i in 0..40 -> float i|]
+
+let models = [
+    Model2.createpoints x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
+    Model2.createpoints x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
+    Model2.createTeXModel cons vars fns f0str "C_A" x Colors.Brown 2.0f
+    Model2.createTeXModel cons vars fns f1str "C_A" x Colors.Green 2.0f
+    Model2.createTeXModel cons vars fns f6str "C_A" x Colors.Blue 2.0f
+]
+
+let bounds = function 
+    | Model2.Model2D m -> m.Bounds
+    | Model2.TeXModel (tex, f, b, m) -> m.Bounds
+
+let model2 = function
+    | Model2.Model2D m -> m
+    | Model2.TeXModel (tex,f,b,m) -> m
+
+let _models = models |> List.map (fun x -> model2 x) |> Array.ofList
+
+printfn "model0: %A, %d" _models[0].Bounds _models[0].VerticesCount
+printfn "model1: %A, %d" _models[1].Bounds _models[1].VerticesCount
+printfn "model2: %A, %d" _models[2].Bounds _models[2].VerticesCount
+printfn "model3: %A, %d" _models[3].Bounds _models[3].VerticesCount
+printfn "model4: %A, %d" _models[4].Bounds _models[4].VerticesCount
+
+
+// let r = Renderer(cons, vars, fns, models)
+// r.Run()
+
+// Console.ReadKey ()
