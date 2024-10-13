@@ -341,14 +341,26 @@ module Views =
                                                     Slider.width 100
                                                     Slider.minimum v.A
                                                     Slider.maximum v.B    
+                                                    Slider.value (if v.V.IsSome then v.V.Value else v.A)
                                                     Slider.onValueChanged (fun d ->
-                                                        variables[s].V <- ValueSome d
-                                                        // _slider_value.Set d
+                                                        match variables[s].V with
+                                                        | ValueNone -> 
+                                                            variables[s].V <- ValueSome d
+                                                            // _slider_value.Set d
 
-                                                        for (tex, f, b, m) in tex_models do
-                                                            if target <> String.Empty && s <> target && tex.Contains(s) then
-                                                                evalModel constants variables functions target b m
-                                                        c.Chart.NormalizeModels() 
+                                                            for (tex, f, b, m) in tex_models do
+                                                                if target <> String.Empty && s <> target && tex.Contains(s) then
+                                                                    evalModel constants variables functions target b m
+                                                            c.Chart.NormalizeModels() 
+                                                        | ValueSome _v when _v <> d ->
+                                                            variables[s].V <- ValueSome d
+                                                            // _slider_value.Set d
+
+                                                            for (tex, f, b, m) in tex_models do
+                                                                if target <> String.Empty && s <> target && tex.Contains(s) then
+                                                                    evalModel constants variables functions target b m
+                                                            c.Chart.NormalizeModels() 
+                                                        | _ -> ()
                                                     )
                                                 ]
                                                 TextBlock.create [
