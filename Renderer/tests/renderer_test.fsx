@@ -88,6 +88,12 @@ printfn "model2: %A, %d" _models[2].Bounds _models[2].VerticesCount
 printfn "model3: %A, %d" _models[3].Bounds _models[3].VerticesCount
 printfn "model4: %A, %d" _models[4].Bounds _models[4].VerticesCount
 
+_models[0].Name <- "raw pts 0"
+_models[1].Name <- "raw pts 1"
+_models[2].Name <- "f(x)"
+_models[3].Name <- "g(x)"
+_models[4].Name <- "z(x)"
+
 
 let r = Renderer(cons, vars, fns, models)
 r.Run()

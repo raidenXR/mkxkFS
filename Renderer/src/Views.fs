@@ -125,6 +125,61 @@ module Views =
             AttrBuilder<'t>.CreateProperty<obj>(ToggleButton.ContentProperty, value, ValueNone)
 
 
+    let ComponentSlider 
+        (id:string)
+        (value:string * Variable) 
+        (cons:Map<string,float>) 
+        (vars:Map<string,Variable>) 
+        (fns:Map<string,Binder.BoundExpr>) 
+        (tex_models: array<string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2D>)
+        (target:IReadable<string>) 
+        (chart:SKChart2D) =
+
+        Component(fun ctx ->
+            let (s,v) = value
+            let variable = ctx.useState (match v.V with | ValueSome _v -> _v | ValueNone -> v.A + (v.B - v.A) / 2.0)
+            let target = ctx.usePassedRead target
+
+            Grid.create [
+                Grid.columnDefinitions "100, 140, 200"
+                Grid.verticalScrollBarVisibility ScrollBarVisibility.Auto
+                Grid.children [
+                    Image.create [
+                        Image.column 0
+                        Image.stretch Media.Stretch.None
+                        Image.horizontalAlignment HorizontalAlignment.Left
+                        Image.source (Converter.convert s)
+                    ]
+
+                    Slider.create [
+                        Slider.column 1
+                        Slider.width 120
+                        Slider.minimum v.A
+                        Slider.maximum v.B
+                        Slider.value variable.Current    
+                        Slider.onValueChanged (fun d ->
+                            vars[s].V <- ValueSome d
+
+                            for (tex, f, b, m) in tex_models do
+                                if target.Current <> String.Empty && s <> target.Current && tex.Contains(s) then
+                                    evalModel cons vars fns target.Current b m
+
+                            chart.NormalizeModels()
+                            variable.Set d
+                        )
+                    ]
+
+                    TextBlock.create [
+                        TextBlock.column 2
+                        TextBlock.width 100
+                        TextBlock.maxWidth 100
+                        TextBlock.text (variable.Current.ToString("N4"))
+                    ]
+                ]
+            ]
+        )
+
+
     let view2 (constants:Map<string,float>, variables:Map<string,Variable>, functions:Map<string,Binder.BoundExpr>, models:list<Model>) =
         Component(fun ctx ->
             let tex_models = texModels models
@@ -165,7 +220,7 @@ module Views =
             let cons = ctx.useState _cons
             let vars = ctx.useState _vars
             let fns = ctx.useState _fns            
-            let mutable target = String.Empty
+            let target = ctx.useState String.Empty
         
             DockPanel.create [
                 DockPanel.lastChildFill true
@@ -274,25 +329,25 @@ module Views =
                                     if x <> null then
                                         let (t, v) = x :?> (string * Variable)
                                         
-                                        target <- t
-                                        c.Chart.XImg <- (Converter.image target)        
+                                        c.Chart.XImg <- (Converter.image t)        
 
-                                        // _vars
-                                        // |> Array.except [|(t, v)|]
-                                        // |> Array.map (fun (x, _) -> x,variables[x])
-                                        // |> vars.Set
+                                        _vars
+                                        |> Array.except [|(t, v)|]
+                                        |> Array.map (fun (x, _) -> x,variables[x])
+                                        |> vars.Set
 
+                                        target.Set t
                                         // when event triggers, sliders are created anew
                                         // restore the values of the variables map
                                         // to min to match sliders values
                                         // vars.Current
                                         // |> Seq.iter (fun (x, _) -> variables[x].V <- ValueSome variables[x].A)
                                        
-                                        for (tex, f, b, m) in tex_models do
-                                            if target <> String.Empty then
-                                                evalModel constants variables functions target b m
+                                        // for (tex, f, b, m) in tex_models do
+                                        //     if target <> String.Empty then
+                                        //         evalModel constants variables functions target b m
 
-                                        c.Chart.NormalizeModels()
+                                        // c.Chart.NormalizeModels()
                                 )
                             ]
                             
@@ -319,61 +374,67 @@ module Views =
                                 ListBox.column 0
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems vars.Current
-                                ListBox.itemTemplate (
-                                    DataTemplateView<string * Variable>.create (fun (s, v) -> 
-                                        // let _slider = ctx.useState<Slider>(null, renderOnChange = false)
-                                        // let _slider_value = ctx.useState(v.A, renderOnChange = true)
-                                        Grid.create [
-                                            Grid.columnDefinitions "100, 140, 200"
-                                            Grid.children [
-                                                Image.create [
-                                                    Image.column 0
-                                                    Image.stretch Media.Stretch.None 
-                                                    Image.horizontalAlignment HorizontalAlignment.Left
-                                                    Image.source (Converter.convert s)
-                                                ]
-                                                // View.createWithOutlet _slider.Set Slider.create [
-                                                    // Slider.init _slider.Set
-                                                Slider.create [
-                                                    // Slider.init _slider.Set
-                                                    Slider.column 1
-                                                    Slider.width 100
-                                                    Slider.minimum v.A
-                                                    Slider.maximum v.B    
-                                                    Slider.value (if v.V.IsSome then v.V.Value else v.A)
-                                                    Slider.onValueChanged (fun d ->
-                                                        match variables[s].V with
-                                                        | ValueNone -> 
-                                                            variables[s].V <- ValueSome d
-                                                            // _slider_value.Set d
-
-                                                            for (tex, f, b, m) in tex_models do
-                                                                if target <> String.Empty && s <> target && tex.Contains(s) then
-                                                                    evalModel constants variables functions target b m
-                                                            c.Chart.NormalizeModels() 
-                                                        | ValueSome _v when _v <> d ->
-                                                            variables[s].V <- ValueSome d
-                                                            // _slider_value.Set d
-
-                                                            for (tex, f, b, m) in tex_models do
-                                                                if target <> String.Empty && s <> target && tex.Contains(s) then
-                                                                    evalModel constants variables functions target b m
-                                                            c.Chart.NormalizeModels() 
-                                                        | _ -> ()
-                                                    )
-                                                ]
-                                                TextBlock.create [
-                                                    TextBlock.column 2
-                                                    TextBlock.width 100
-                                                    TextBlock.maxWidth 100
-                                                    // TextBlock.text (_slider_value.Current.ToString("N4"))
-                                                ]
-                                            ]
-                                        ]
-                                    )
-                                )
+                                ListBox.dataItems [for i in vars.Current -> ComponentSlider $"slider-{i}" i constants variables functions tex_models target c.Chart]
                             ]
+                            // ListBox.create [
+                            //     ListBox.column 0
+                            //     ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
+                            //     ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
+                            //     ListBox.dataItems vars.Current
+                            //     ListBox.itemTemplate (
+                            //         DataTemplateView<string * Variable>.create (fun (s, v) -> 
+                            //             // let _slider = ctx.useState<Slider>(null, renderOnChange = false)
+                            //             // let _slider_value = ctx.useState(v.A, renderOnChange = true)
+                            //             Grid.create [
+                            //                 Grid.columnDefinitions "100, 140, 200"
+                            //                 Grid.children [
+                            //                     Image.create [
+                            //                         Image.column 0
+                            //                         Image.stretch Media.Stretch.None 
+                            //                         Image.horizontalAlignment HorizontalAlignment.Left
+                            //                         Image.source (Converter.convert s)
+                            //                     ]
+                            //                     // View.createWithOutlet _slider.Set Slider.create [
+                            //                         // Slider.init _slider.Set
+                            //                     Slider.create [
+                            //                         // Slider.init _slider.Set
+                            //                         Slider.column 1
+                            //                         Slider.width 100
+                            //                         Slider.minimum v.A
+                            //                         Slider.maximum v.B    
+                            //                         Slider.value (if v.V.IsSome then v.V.Value else v.A)
+                            //                         Slider.onValueChanged (fun d ->
+                            //                             match variables[s].V with
+                            //                             | ValueNone -> 
+                            //                                 variables[s].V <- ValueSome d
+                            //                                 // _slider_value.Set d
+
+                            //                                 for (tex, f, b, m) in tex_models do
+                            //                                     if target <> String.Empty && s <> target && tex.Contains(s) then
+                            //                                         evalModel constants variables functions target b m
+                            //                                 c.Chart.NormalizeModels() 
+                            //                             | ValueSome _v when _v <> d ->
+                            //                                 variables[s].V <- ValueSome d
+                            //                                 // _slider_value.Set d
+
+                            //                                 for (tex, f, b, m) in tex_models do
+                            //                                     if target <> String.Empty && s <> target && tex.Contains(s) then
+                            //                                         evalModel constants variables functions target b m
+                            //                                 c.Chart.NormalizeModels() 
+                            //                             | _ -> ()
+                            //                         )
+                            //                     ]
+                            //                     TextBlock.create [
+                            //                         TextBlock.column 2
+                            //                         TextBlock.width 100
+                            //                         TextBlock.maxWidth 100
+                            //                         // TextBlock.text (_slider_value.Current.ToString("N4"))
+                            //                     ]
+                            //                 ]
+                            //             ]
+                            //         )
+                            //     )
+                            // ]
 
                             ListBox.create [
                                 ListBox.column 1
