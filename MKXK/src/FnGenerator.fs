@@ -297,7 +297,7 @@ module Mutation =
     let mutateVariable (s:ref<string>) (vars:array<string>) (fns:array<string>) (r:Random) =
         match r.NextDouble() with
         | d when d >= 0.2 && vars.Length > 0 -> s.Value <- pick vars r
-        // | d when d < 0.2 && fns.Length > 0 -> s.Value <- pick fns r
+        | d when d < 0.2 && fns.Length > 0 -> s.Value <- pick fns r
         | _ -> ()
 
         
