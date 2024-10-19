@@ -90,9 +90,9 @@ let models = [
     Model2.createpoints x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
     Model2.createpoints x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
     Model2.createTeXModel cons vars fns (latex (fns_optimized[0])) "C_A" x Colors.Green 2.0f
-    // Model2.createTeXModel cons vars fns (latex (fns_optimized[1])) "C_A" x Colors.Red 2.0f
-    // Model2.createTeXModel cons vars fns (latex (fns_optimized[2])) "C_A" x Colors.Blue 2.0f
-    // Model2.createTeXModel cons vars fns (latex (fns_optimized[3])) "C_A" x Colors.Brown 2.0f
+    Model2.createTeXModel cons vars fns (latex (fns_optimized[1])) "C_A" x Colors.Red 2.0f
+    Model2.createTeXModel cons vars fns (latex (fns_optimized[2])) "C_A" x Colors.Blue 2.0f
+    Model2.createTeXModel cons vars fns (latex (fns_optimized[3])) "C_A" x Colors.Brown 2.0f
     Model2.createTeXModel cons vars fns (latex (fns_optimized[4])) "C_A" x Colors.Silver 2.0f
 ]
 
@@ -101,9 +101,9 @@ let names = [
     "rp1"
     "f1(x)"
     "f2(x)"
-    // "f3(x)"
-    // "f4(x)"
-    // "f5(x)"  
+    "f3(x)"
+    "f4(x)"
+    "f5(x)"  
 ]
 
 Model2.setNames names models

@@ -348,14 +348,16 @@ module Views =
                                         // when event triggers, sliders are created anew
                                         // restore the values of the variables map
                                         // to min to match sliders values
-                                        // vars.Current
-                                        // |> Seq.iter (fun (x, _) -> variables[x].V <- ValueSome variables[x].A)
+                                        _vars
+                                        |> Seq.iter (fun (x, _) -> 
+                                            variables[x].V <- ValueSome (variables[x].A + (variables[x].B - variables[x].A) / 2.)
+                                        )
                                        
-                                        // for (tex, f, b, m) in tex_models do
-                                        //     if target <> String.Empty then
-                                        //         evalModel constants variables functions target b m
+                                        for (tex, f, b, m) in tex_models do
+                                            // if target <> String.Empty then
+                                                evalModel constants variables functions target.Current b m
 
-                                        // c.Chart.NormalizeModels()
+                                        c.Chart.NormalizeModels()
                                 )
                             ]
                             
@@ -366,12 +368,6 @@ module Views =
                             ]                            
                         ]
                     ]
-
-                    // Border.create [Border.dock Dock.Top; Border.height 20; Border.width 200]
-                    // TextBlock.create []
-                    // Image.create [
-                    //     // Image.source (Converter.convert (Seq.last ))
-                    // ]
                     Grid.create [
                         Grid.dock Dock.Bottom
                         Grid.maxHeight 200
@@ -384,79 +380,19 @@ module Views =
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.dataItems [for i in vars.Current -> ComponentSlider $"slider-{i}" i constants variables functions tex_models target c.Chart]
                             ]
-                            // ListBox.create [
-                            //     ListBox.column 0
-                            //     ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
-                            //     ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                            //     ListBox.dataItems vars.Current
-                            //     ListBox.itemTemplate (
-                            //         DataTemplateView<string * Variable>.create (fun (s, v) -> 
-                            //             // let _slider = ctx.useState<Slider>(null, renderOnChange = false)
-                            //             // let _slider_value = ctx.useState(v.A, renderOnChange = true)
-                            //             Grid.create [
-                            //                 Grid.columnDefinitions "100, 140, 200"
-                            //                 Grid.children [
-                            //                     Image.create [
-                            //                         Image.column 0
-                            //                         Image.stretch Media.Stretch.None 
-                            //                         Image.horizontalAlignment HorizontalAlignment.Left
-                            //                         Image.source (Converter.convert s)
-                            //                     ]
-                            //                     // View.createWithOutlet _slider.Set Slider.create [
-                            //                         // Slider.init _slider.Set
-                            //                     Slider.create [
-                            //                         // Slider.init _slider.Set
-                            //                         Slider.column 1
-                            //                         Slider.width 100
-                            //                         Slider.minimum v.A
-                            //                         Slider.maximum v.B    
-                            //                         Slider.value (if v.V.IsSome then v.V.Value else v.A)
-                            //                         Slider.onValueChanged (fun d ->
-                            //                             match variables[s].V with
-                            //                             | ValueNone -> 
-                            //                                 variables[s].V <- ValueSome d
-                            //                                 // _slider_value.Set d
-
-                            //                                 for (tex, f, b, m) in tex_models do
-                            //                                     if target <> String.Empty && s <> target && tex.Contains(s) then
-                            //                                         evalModel constants variables functions target b m
-                            //                                 c.Chart.NormalizeModels() 
-                            //                             | ValueSome _v when _v <> d ->
-                            //                                 variables[s].V <- ValueSome d
-                            //                                 // _slider_value.Set d
-
-                            //                                 for (tex, f, b, m) in tex_models do
-                            //                                     if target <> String.Empty && s <> target && tex.Contains(s) then
-                            //                                         evalModel constants variables functions target b m
-                            //                                 c.Chart.NormalizeModels() 
-                            //                             | _ -> ()
-                            //                         )
-                            //                     ]
-                            //                     TextBlock.create [
-                            //                         TextBlock.column 2
-                            //                         TextBlock.width 100
-                            //                         TextBlock.maxWidth 100
-                            //                         // TextBlock.text (_slider_value.Current.ToString("N4"))
-                            //                     ]
-                            //                 ]
-                            //             ]
-                            //         )
-                            //     )
-                            // ]
-
                             ListBox.create [
                                 ListBox.column 1
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.dataItems (Array.map (fun (tex, _, _, _) -> tex) tex_models)
-                                ListBox.itemTemplate (
-                                    DataTemplateView<string>.create(fun s ->
-                                        Image.create [
-                                            Image.stretch Media.Stretch.None
-                                            Image.source (Converter.convert s)
-                                        ]
-                                    )
-                                )
+                                // ListBox.itemTemplate (
+                                //     DataTemplateView<string>.create(fun s ->
+                                //         Image.create [
+                                //             Image.stretch Media.Stretch.None
+                                //             Image.source (Converter.convert s)
+                                //         ]
+                                //     )
+                                // )
                             ]
                         ]
                     ]
@@ -465,6 +401,32 @@ module Views =
                     ]                            
                 ]
             ]
+        )
+
+    let viewTest() =
+        Component(fun ctx -> 
+            let tex = ctx.useState "f(x)"
+            let textbox = ctx.useState<TextBox> null
+            DockPanel.create [
+                DockPanel.lastChildFill true
+                DockPanel.children [
+                    Button.create [
+                        Button.dock Dock.Bottom
+                        Button.content "convert"
+                        Button.onClick (fun _ -> tex.Set textbox.Current.Text)
+                    ]
+                    TextBox.create [
+                        TextBox.init textbox.Set
+                        TextBox.dock Dock.Bottom
+                        TextBox.height 300
+                        TextBox.width 800                        
+                    ]
+                    Image.create [
+                        Image.stretch Media.Stretch.None
+                        Image.source (Converter.convert tex.Current)
+                    ]
+                ]
+            ]    
         )
 
     type MainWindow() =
