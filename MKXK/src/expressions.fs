@@ -385,6 +385,7 @@ module ExprTree =
         |> Array.filter (function | Constant _ -> true | _ -> false)
         |> Array.map (function | Constant c -> c | _ -> failwith "expr is not Constant")
                 
+    /// returns the distinct variables of the f
     let variables (f:Expr) = 
         nodes f 
         |> Array.ofSeq 
@@ -392,6 +393,14 @@ module ExprTree =
         |> Array.map (function | Symbol v -> v | _ -> failwith "expr is not Variable")
         |> Array.distinct
         |> Array.tail    // skip the first symbol which is the identifier of the function
+        
+    /// returns All the variables of the f
+    let variablesAll (f:Expr) =
+        nodes f
+        |> Array.ofSeq
+        |> Array.filter (function | Symbol _ -> true | _ -> false)
+        |> Array.map (function | Symbol v -> v | _ -> failwith "expr is not Variable")
+        |> Array.tail // skip the first symbol which is the identifier of the function
         
     let binaries (f:Expr) = 
         nodes f 
@@ -618,7 +627,7 @@ module Evaluation =
                 match v.V with 
                 | ValueSome s -> s
                 | ValueNone -> v.A + (v.B - v.A) / 2.
-            elif fns.ContainsKey s then eval cons vars fns t (fns[t])
+            elif fns.ContainsKey s then eval cons vars fns t fns[s]
             else failwith $"symbol -{s}- not found in maps"
         | Assignment (l, r) -> eval cons vars fns t r
         | Binary (l, r, op) -> 
@@ -742,8 +751,13 @@ module Evaluation =
             
 
     /// apply the eval function on a series of x-values and store the results on a y-array (target)
-    let evalvalues (x:array<float>) (y:array<float>) cons (vars:Map<string,Variable>) fns t f :unit =
-        for i in 0..y.Length - 1 do
-            vars[t].V <- ValueSome x[i]
-            y[i] <- eval cons vars fns t f
+    let evalvalues (yret:array<float>) cons (vars:Map<string,Variable>) fns t f :unit =
+        let v = vars[t]
+        let dx = (v.B - v.A) / (float yret.Length)
+        v.V <- ValueSome v.A
+        for i in 0..yret.Length - 1 do
+            yret[i] <- eval cons vars fns t f
+            v.V <- ValueSome (v.V.Value + dx)
+        v.V <- ValueSome v.B
+        yret[yret.Length - 1] <- eval cons vars fns t f
             

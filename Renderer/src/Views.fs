@@ -107,6 +107,14 @@ module Model2 =
         |> Array.filter (function | TeXModel _ -> true | _ -> false) 
         |> Array.map (function | TeXModel (tex,f,b,m) -> (tex,f,b,m) | _ -> failwith "not a tex-model")
 
+
+    let setNames (names:list<string>) (models:list<Model>) = 
+        for name, model in List.zip names models do
+            match model with
+            | Model2D m -> m.Name <- name
+            | TeXModel (tex, f, b, m) -> m.Name <- name
+
+
     let rawModels (models:list<Model>) =
         models
         |> Array.ofList

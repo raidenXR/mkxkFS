@@ -220,10 +220,30 @@ module FnGeneration =
 
 
 
-    let generatefn (fn_name:string) (constants:seq<string>) (variables:seq<string>) (functions:seq<string>) lbound ubound maxnodes :Expr =
+    let generatefn 
+        (fn_name:string) 
+        (constants:seq<string>) 
+        (variables:seq<string>) 
+        (functions:seq<string>) 
+        lbound 
+        ubound 
+        maxnodes :Expr =
         let generator = FnGenerator(constants, variables, functions, lbound, ubound, maxnodes)
         generator.fngenerate fn_name
 
+
+    let generatefnEXT 
+        (fn_name:string) 
+        (constans:seq<string>) 
+        (variables:seq<string>) 
+        (functions:seq<string>)
+        (lbound:float)
+        (ubound:float)
+        (maxnodes:int) :Expr = 
+        let mutable fn = generatefn fn_name constans variables functions lbound ubound maxnodes
+        while (ExprTree.variablesAll fn).Length < 2 do
+            fn <- generatefn fn_name constans variables functions lbound ubound maxnodes
+        fn
 
         
 module Mutation =
@@ -238,11 +258,22 @@ module Mutation =
         err: float
     }
 
-    
+            
+            
+
     /// select random element from an array
     let inline private pick (vec:array<'T>) (r:Random) :'T = 
         if vec.Length = 0 then failwith "array is empty" else vec[r.Next(vec.Length)]
-
+    
+    /// if possible ensures that f contains specific target else returns None
+    let withtarget (t:string) f :option<Expr> =
+        let vars = variables f
+        if not (vars |> Array.exists (fun x -> x.Value = t)) && vars.Length > 2 then 
+            let idx = pick vars[1..] (new Random())
+            idx.Value <- t
+            // printfn "%s" (latex f)
+            Some f
+        else None
 
     let private rmse (a:array<float>) (b:array<float>) =
         let mutable err = 0.
@@ -266,7 +297,7 @@ module Mutation =
     let mutateVariable (s:ref<string>) (vars:array<string>) (fns:array<string>) (r:Random) =
         match r.NextDouble() with
         | d when d >= 0.2 && vars.Length > 0 -> s.Value <- pick vars r
-        | d when d < 0.2 && fns.Length > 0 -> s.Value <- pick fns r
+        // | d when d < 0.2 && fns.Length > 0 -> s.Value <- pick fns r
         | _ -> ()
 
         
@@ -284,30 +315,33 @@ module Mutation =
         let vars = pars.variables.Keys |> Array.ofSeq
         let fns = pars.functions.Keys |> Array.ofSeq
     
-        let ns = numbers f
-        let cs = constants f
-        let vs = variables f
-        let us = unaries f
-        let bs = binaries f
+        let fn = copy f        // copy of f to mutate, the original f is not mutated
+        let mutable fn_out = copy f
+        let mutable err0 = Double.MaxValue
+
+        let ns = numbers fn
+        let cs = constants fn
+        let vs = variablesAll fn
+        let us = unaries fn
+        let bs = binaries fn
         let r = Random()
 
         let uops = [|Plus; Minus; Log; Ln; Exp; Sqrt|]
         let bops = [|Plus; Minus; Star; Cdot; Slash; Accent|]
         let yret = Array.zeroCreate<float> pars.x.Length
 
-        let fn = copy f        // copy of f to mutate, the original f is not mutated
-        let mutable fn_out = copy f
-        let mutable err0 = Double.MaxValue
-
-        if vs.Length > 2 then
+        if vs.Length > 0 then
             for i in 0..N do
                 if i % 2 = 0 && ns.Length > 0 then mutateNumber (pick ns r) lb ub  r
-                if i % 3 = 0 && vs.Length > 1 then mutateVariable (pick vs r) vars fns r
+                if i % 3 = 0 && vs.Length > 0 then mutateVariable (pick vs r) vars fns r
                 if i % 5 = 0 && cs.Length > 0 then mutateConstant (pick cs r) cons r
                 if i % 9 = 0 && us.Length > 0 then mutateUnary (pick us r) uops r
                 if i % 4 = 0 && bs.Length > 0 then mutateBinary (pick bs r) bops r
                 
-                Evaluation.evalvalues pars.x yret pars.constants pars.variables pars.functions t (Binder.bind fn)
+                // ensure that targets for evaluation always exists and mutation does not break it
+                if not (vs |> Array.exists (fun x -> x.Value = t)) 
+                    then vs[r.Next(vs.Length)].Value <- t
+                Evaluation.evalvalues yret pars.constants pars.variables pars.functions t (Binder.bind fn)
                 let err = rmse pars.y yret
                 if err < err0 then 
                     fn_out <- copy fn  
