@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="src/expressions.fs" />
+    <Compile Include="src/parsing.fs" />
+    <Compile Include="src/typesetting.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="fonts/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="2.88.6" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.6" />
+  </ItemGroup>
+</Project>

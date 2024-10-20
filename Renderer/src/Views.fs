@@ -335,9 +335,7 @@ module Views =
                                 )
                                 ComboBox.onSelectedItemChanged (fun x -> 
                                     if x <> null then
-                                        let (t, v) = x :?> (string * Variable)
-                                        
-                                        c.Chart.XImg <- (Converter.image t)        
+                                        let (t, v) = x :?> (string * Variable)                                        
 
                                         _vars
                                         |> Array.except [|(t, v)|]
@@ -358,6 +356,7 @@ module Views =
                                                 evalModel constants variables functions target.Current b m
 
                                         c.Chart.NormalizeModels()
+                                        c.Chart.XImg <- (Converter.image target.Current)        
                                 )
                             ]
                             
