@@ -63,6 +63,27 @@ module Typesetting =
 
     // let printatoms ()
 
+    let rec printExprs (exprs:seq<Expr>) (indent:string) =
+        printf "%s" indent
+        for expr in exprs do
+            match expr with
+            | Number _
+            | Identifier _
+            | MathOperator _ -> printf "%s" (string expr)
+            | Symbol (t,s) -> printf "%s" s 
+            | Binary (s,l,r) -> 
+                printExprs [l] (indent)
+                printExprs [r] (indent)
+            | Grouped g -> 
+                printfn ""
+                printExprs g (indent + "--")
+            | Up (e,u) ->
+                printExprs [u] (indent + "--")
+            | Down (e,d) ->
+                printExprs [d] (indent + "--")
+            | _ -> failwith $"(string expr) not implemented yet"
+            
+
     let rec measure (exprs:seq<Expr>) (paint:SKPaint) (s:float32) :struct(float32 * float32) =
         let mutable w = 0f
         let mutable h = fontsize * s
@@ -97,6 +118,7 @@ module Typesetting =
                 let struct(lw,lh) = measure [d] paint (0.8f * s)
                 w <- w + lw
                 h <- h + lh
+            | RightBrace -> w <- 8f 
             | _ -> failwith $"{string expr} is not implemented"
         struct(w,h)
 
@@ -108,11 +130,13 @@ module Typesetting =
         while i < typefaces.Length && not break' do
             if typefaces[i].ContainsGlyphs(t) then
                 paint.Typeface <- typefaces[i]
+                paint.TextSize <- fontsize * s
+                canvas.DrawText(t, x, y, paint)    
                 // Console.WriteLine("{0},  {1}", typefaces[i].FamilyName, t)
                 break' <- true
             i <- i + 1
-        paint.TextSize <- fontsize * s
-        canvas.DrawText(t, x, y, paint)    
+        if not break' then
+            canvas.DrawText(t, x, y, paint)
         paint.TextSize <- fontsize
         paint.Typeface <- typefaces[0]
 
@@ -158,6 +182,9 @@ module Typesetting =
                 let struct(w,h) = measure [d] paint (0.8f * s)
                 typeset [d] x (y + fontsize / 3f) paint canvas (0.8f * s)
                 x <- x + w
+            | RightBrace ->
+                draw "}" x y s paint canvas
+                x <- x + 8f
             | _ -> failwith $"{string expr} is not implemented yet"
             
         

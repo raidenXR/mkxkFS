@@ -177,49 +177,69 @@ type Parser(src:string) =
         if (current()).Id = kind then nextToken () else Token(pos, (current()).Str, kind)
 
 
-    let rec parseExpr (exprs:List<Expr>) :unit =
+    let rec parseExpr () :Expr =
         if pos < tokens.Count && current().Id <> TokenId.Eof then
             match (current().Id) with
-            | TokenId.Number -> exprs.Add (Number (nextToken().Str))
-            | TokenId.Identifier -> exprs.Add (Identifier (nextToken().Str))
+            | TokenId.Number -> 
+                let e = Number(nextToken().Str)
+                // exprs.Add e
+                e
+            | TokenId.Identifier -> 
+                let e = Identifier(nextToken().Str)
+                // exprs.Add e
+                e
             | TokenId.Over 
             | TokenId.Under 
             | TokenId.Space   
             | TokenId.Scaled -> failwith "Over, Under not implemented yet"
             | TokenId.MathOperator
-            | TokenId.Symbol -> exprs.Add(symbols[nextToken().Str])
+            | TokenId.Symbol -> 
+                let e = symbols[nextToken().Str]
+                // exprs.Add e
+                e
             | TokenId.Binary -> 
                 let c = nextToken()
-                parseExpr(exprs)
-                let lhs = exprs.Last()
-                parseExpr(exprs)
-                let rhs = exprs.Last()
-                exprs.Add (Binary(c.Str, lhs, rhs))
+                let l = parseExpr()
+                let r = parseExpr()
+                let e = Binary(c.Str,l, r)
+                // exprs.Add e
+                e
             | TokenId.GroupedOpen ->                
                 ignore (nextToken())    // ignore {
-                let grp = List<Expr>()
-                parseExpr(grp)
-                exprs.Add (Grouped(grp))
+                let g = List<Expr>()
+                while current().Id <> TokenId.GroupedClose do 
+                    g.Add (parseExpr())
+                ignore (nextToken()) // ignore }
+                let e = Grouped(g)
+                // exprs.Add e
+                e
             | TokenId.GroupedClose -> 
                 ignore (nextToken())   // ignore }
-                // RightBrace
+                RightBrace
                 // failwith $"GroupedClose - token in pos: {current().Pos}, last token: {exprs.Last().ToString()}"
             | TokenId.Open 
             | TokenId.Close -> 
-                exprs.Add (enclosures[nextToken().Str])
+                let e = enclosures[nextToken().Str]
+                // exprs.Add e
+                e
             | TokenId.Up ->
                 ignore (nextToken())    // ignore ^
-                let e = exprs.Last()
-                parseExpr(exprs)
-                let n = exprs.Last()
-                exprs.Add (Up(e, n))                
+                // let b = exprs.Last()
+                let b = ExprNone
+                let n = parseExpr()
+                let e = Up(b, n)
+                // exprs.Add e
+                e                
             | TokenId.Down -> 
                 ignore (nextToken())   // ignore _
-                let e = exprs.Last()
-                parseExpr(exprs)
-                let n = exprs.Last()
-                exprs.Add (Down(e, n))
+                // let b = exprs.Last()
+                let b = ExprNone
+                let n = parseExpr()
+                let e = Down(b, n)
+                // exprs.Add e
+                e
             | _ -> failwith $"{(current()).Id} is not implemented"
+        else Eof
         // with 
         //     | :? System.Collections.Generic.KeyNotFoundException as e -> 
         //         Console.WriteLine (current().Str); failwith e.Message
@@ -232,7 +252,7 @@ type Parser(src:string) =
         // WARNING: if called multiple time, it will append to same sxpressions List<Expr>
         // ##################################################################                
         let exprs = List<Expr>(20)
-        while pos < tokens.Count do parseExpr(exprs)
+        while pos < tokens.Count do exprs.Add(parseExpr())
         exprs
 
 
