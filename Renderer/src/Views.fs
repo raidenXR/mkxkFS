@@ -18,7 +18,7 @@ open SKCharts.Avalonia
 
 
 module Converter =
-    open Notation
+    open NotationFS
     open System.Linq
 
     let ms = new System.IO.MemoryStream(8 * 1024)
@@ -26,10 +26,8 @@ module Converter =
     let convert (tex:string) = 
         ms.Position <- 0
         let parser = Parser(tex)
-        let hlist = parser.Parse().ToList()
-        use renderer = new TeXRenderer(16.0f)
-        renderer.Typeset hlist
-        renderer.Render(ms, hlist)
+        let exprs = parser.exprs()
+        Typesetting.render exprs ms               
         ms.Position <- 0
         new Avalonia.Media.Imaging.Bitmap(ms)
 
@@ -37,10 +35,8 @@ module Converter =
     let image (tex:string) =
         ms.Position <- 0
         let parser = Parser(tex)
-        let hlist = parser.Parse().ToList()
-        use renderer = new TeXRenderer(16.0f)
-        renderer.Typeset hlist
-        renderer.Render(ms, hlist)
+        let exprs = parser.exprs()
+        Typesetting.render exprs ms
         ms.Position <- 0
         SKImage.FromEncodedData(ms)
 
@@ -384,14 +380,14 @@ module Views =
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.dataItems (Array.map (fun (tex, _, _, _) -> tex) tex_models)
-                                // ListBox.itemTemplate (
-                                //     DataTemplateView<string>.create(fun s ->
-                                //         Image.create [
-                                //             Image.stretch Media.Stretch.None
-                                //             Image.source (Converter.convert s)
-                                //         ]
-                                //     )
-                                // )
+                                ListBox.itemTemplate (
+                                    DataTemplateView<string>.create(fun s ->
+                                        Image.create [
+                                            Image.stretch Media.Stretch.None
+                                            Image.source (Converter.convert s)
+                                        ]
+                                    )
+                                )
                             ]
                         ]
                     ]

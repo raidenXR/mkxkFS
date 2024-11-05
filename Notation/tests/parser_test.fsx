@@ -56,9 +56,9 @@ for str in functions do
         Color = SKColors.Black,
         IsAntialias = true,
         TextSize = 16f,
-        StrokeWidth = 2.0f
+        StrokeWidth = 1.0f
         )
-    let size = Typesetting.measure exprs paint 1.0f
+    let size = Typesetting.measure exprs paint 0.f 0.f 1.0f
     printfn "%A" size
     use fs = File.Create($"notation_images/fn{i}.png")
     Typesetting.render exprs fs

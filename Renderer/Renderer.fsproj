@@ -25,7 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\SKCharts\SKCharts\SKCharts.csproj" />
     <ProjectReference Include="..\..\..\src\SKCharts\SKCharts.Avalonia\src\SKCharts.Avalonia.csproj" />
-    <ProjectReference Include="..\..\..\src\Notation\Notation\Notation.csproj" />
+    <ProjectReference Include="..\Notation\Notation.fsproj" />
     <ProjectReference Include="..\MKXK\mkxkFS.fsproj" />
   </ItemGroup>
 
