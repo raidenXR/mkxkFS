@@ -70,11 +70,12 @@ let desc: Mutation.OptimizationDesc = {
     y = [|1.0..0.5..15.0|]
     err = 1e3
 }
-let fns_optimized = rng_fns
-                    |> Array.map (Mutation.optimizefn desc 300 0.1 1e5 "C_A")
-                    // |> Array.take 10
-// |> Array.iter (fun f -> printfn "%s\n" (latex f))
-// let fntexmodel = Model2.createTeXModel cons vars fns (latex rng_fns[0]) "\\partial T" x Colors.Orange 2.2f
+let (fns_optimized, _) = 
+    rng_fns 
+    |> Array.map (Mutation.optimizefn desc 400 0.1 1e5 "C_A")
+    |> Array.sortBy (fun (f,err) -> err)
+    |> Array.take 10
+    |> Array.unzip
 
 
 let html = Html.HtmlBuilder()

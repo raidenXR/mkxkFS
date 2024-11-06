@@ -111,7 +111,7 @@ let args: Mutation.OptimizationDesc  = {
     y = yseries
     err = 10    
 }
-let fret = Mutation.optimizefn args 100 0.10 1000. "C_A" f2
+let (fret,_) = Mutation.optimizefn args 100 0.10 1000. "C_A" f2
 let res_org = Evaluation.eval cons vars (Map []) "f(x)" (Binder.bind f2)
 let res_opt = Evaluation.eval cons vars (Map []) "f(x)" (Binder.bind fret)
 printfn "-original  fn  -eval: %g \n %s\n" res_org (latex f2)

@@ -310,7 +310,7 @@ module Mutation =
         op.Value <- pick ops r
 
 
-    let optimizefn (pars:OptimizationDesc) N lb ub t f :Expr =
+    let optimizefn (pars:OptimizationDesc) N lb ub t f :Expr*float =
         let cons = pars.constants.Keys |> Array.ofSeq
         let vars = pars.variables.Keys |> Array.ofSeq
         let fns = pars.functions.Keys |> Array.ofSeq
@@ -346,5 +346,5 @@ module Mutation =
                 if err < err0 then 
                     fn_out <- copy fn  
                     err0 <- err
-        fn_out       
+        fn_out, err0       
                 

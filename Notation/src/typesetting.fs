@@ -153,16 +153,23 @@ module Typesetting =
     let rec draw (typefaces:array<SKTypeface>) (t:string) x y s (paint:SKPaint) (canvas:SKCanvas) (r:Rect) =
         let mutable break' = false
         let mutable i = 0
-        while i < typefaces.Length && not break' do
-            if typefaces[i].ContainsGlyphs(t) then
-                paint.Typeface <- typefaces[i]
-                paint.TextSize <- fontsize * s
-                let pt = transform x y r
-                canvas.DrawText(t, pt, paint)    
-                break' <- true
-            i <- i + 1
-        if not break' then
-            draw allfonts t x y s paint canvas r
+        match (typefaces |> Array.tryFind (fun x -> x.ContainsGlyphs t)) with
+        | Some typeface -> 
+            paint.Typeface <- typeface
+            paint.TextSize <- fontsize * s
+            let pt = transform x y r
+            canvas.DrawText(t, pt, paint)
+        | _ -> draw allfonts t x y s paint canvas r
+        // while i < typefaces.Length && not break' do
+        //     if typefaces[i].ContainsGlyphs(t) then
+        //         paint.Typeface <- typefaces[i]
+        //         paint.TextSize <- fontsize * s
+        //         let pt = transform x y r
+        //         canvas.DrawText(t, pt, paint)    
+        //         break' <- true
+        //     i <- i + 1
+        // if not break' then
+        //     draw allfonts t x y s paint canvas r
         paint.TextSize <- fontsize
 
 
@@ -202,12 +209,12 @@ module Typesetting =
                 canvas.DrawLine(pt0, pt1, paint)
                 x <- x + max us.w ls.w                
             | Grouped g ->
-                typeset g x y paint canvas s r
                 let gs = measure g paint x y s
+                typeset g x y paint canvas s r
                 x <- x + gs.w
             | Up (e,u) ->
-                typeset [u] x (y + fontsize / 3f) paint canvas (0.8f * s) r
                 let us = measure [u] paint x y (0.8f * s)
+                typeset [u] x (y + fontsize / 3f) paint canvas (0.8f * s) r
                 x <- x + us.w
             | Down (e,d) ->
                 let ds = measure [d] paint x0 y0 (0.8f * s) 

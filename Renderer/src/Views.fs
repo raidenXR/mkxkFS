@@ -225,6 +225,7 @@ module Views =
             let vars = ctx.useState _vars
             let fns = ctx.useState _fns            
             let target = ctx.useState String.Empty
+            let notation = ctx.useState true
         
             DockPanel.create [
                 DockPanel.lastChildFill true
@@ -237,7 +238,8 @@ module Views =
                             ToggleButton.create [
                                 ToggleButton.content "notation"
                                 ToggleButton.margin (Thickness(0., 20., 15., 20.))
-                                ToggleButton.isChecked true
+                                ToggleButton.isChecked notation.Current
+                                ToggleButton.onClick (fun _ -> notation.Set (not (notation.Current)))
                             ]
                             TextBlock.create [TextBlock.text "Constants:"]
                             ListBox.create [
@@ -310,7 +312,7 @@ module Views =
                                             Image.create [
                                                 Image.stretch Media.Stretch.None 
                                                 Image.source (Converter.convert l)
-                                            ]
+                                            ] 
                                         | _ -> Image.create []
                                     )
                                 )                               
@@ -379,15 +381,26 @@ module Views =
                                 ListBox.column 1
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems (Array.map (fun (tex, _, _, _) -> tex) tex_models)
-                                ListBox.itemTemplate (
-                                    DataTemplateView<string>.create(fun s ->
-                                        Image.create [
-                                            Image.stretch Media.Stretch.None
-                                            Image.source (Converter.convert s)
-                                        ]
+                                match notation.Current with
+                                | true ->
+                                    ListBox.dataItems (Array.map (fun (tex, _, _, _) -> tex) tex_models)
+                                    ListBox.itemTemplate (
+                                        DataTemplateView<string>.create(fun s ->
+                                            Image.create [
+                                                Image.stretch Media.Stretch.None
+                                                Image.source (Converter.convert s)
+                                            ]
+                                        )
                                     )
-                                )
+                                | false ->
+                                    ListBox.dataItems (Array.map (fun (tex, _, _, _) -> tex) tex_models)
+                                    ListBox.itemTemplate (
+                                        DataTemplateView<string>.create(fun s ->
+                                            SelectableTextBlock.create [
+                                                SelectableTextBlock.text s
+                                            ]    
+                                        )
+                                    )                                
                             ]
                         ]
                     ]
