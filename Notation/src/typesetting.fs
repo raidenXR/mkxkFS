@@ -36,6 +36,8 @@ module Typesetting =
         "fonts/KaTeX_Main-BoldItalic.ttf"
         "fonts/KaTeX_Math-BoldItalic.ttf"
     |]
+
+    let private allfonts = Array.concat [regular; italic; bold; bolditalic]
     
     let [<Literal>] fontsize = 18f
 
@@ -59,6 +61,8 @@ module Typesetting =
         y: float32
         w: float32
         h: float32
+        ymin: float32
+        ymax: float32
     }
 
     let inline transform x y (size:Rect) :SKPoint =
@@ -97,6 +101,8 @@ module Typesetting =
     let rec measure (exprs:seq<Expr>) (paint:SKPaint) x y s :Rect =
         let mutable w = 0.f
         let mutable h = fontsize * s
+        let mutable ymin = y
+        let mutable ymax = y
         for expr in exprs do
             match expr with
             | Number n -> 
@@ -121,6 +127,8 @@ module Typesetting =
                 let bw = max ls.w rs.w
                 w <- w + bw
                 h <- max h (ls.y + ls.h + rs.y + rs.h)
+                ymax <- ls.ymax
+                ymin <- rs.ymin
             | Grouped g ->
                 let gs = measure g paint x y s
                 w <- w + gs.w
@@ -128,19 +136,21 @@ module Typesetting =
             | Up (e,u) ->
                 let us = measure [u] paint x y (0.8f * s)
                 w <- w + us.w
-                h <- max h (abs (h + us.h - us.y))
+                ymax <- ymax + fontsize / 3f
+                h <- max h (ymax + 0.8f * s * fontsize)
             | Down (e,d) -> 
                 let ls = measure [d] paint x y (0.8f * s)
                 w <- w + ls.w
-                h <- max h (abs (h - ls.h - ls.y))
+                ymin <- ymin - fontsize / 3f
+                h <- max h (ymin + 0.8f * fontsize)
             | RightBrace -> w <- 8f 
             | _ -> failwith $"{string expr} is not implemented"
         paint.Typeface <- regular[1]
-        {x = x; y = y; w = w; h = h}
+        {x = x; y = y; w = w; h = h; ymin = ymin; ymax = ymax}
 
 
     /// draws t with appropriate Typeface    
-    let draw (typefaces:array<SKTypeface>) (t:string) x y s (paint:SKPaint) (canvas:SKCanvas) (r:Rect) =
+    let rec draw (typefaces:array<SKTypeface>) (t:string) x y s (paint:SKPaint) (canvas:SKCanvas) (r:Rect) =
         let mutable break' = false
         let mutable i = 0
         while i < typefaces.Length && not break' do
@@ -149,14 +159,11 @@ module Typesetting =
                 paint.TextSize <- fontsize * s
                 let pt = transform x y r
                 canvas.DrawText(t, pt, paint)    
-                // Console.WriteLine("{0},  {1}", typefaces[i].FamilyName, t)
                 break' <- true
             i <- i + 1
         if not break' then
-            let pt = transform x y r
-            canvas.DrawText(t, pt, paint)    
+            draw allfonts t x y s paint canvas r
         paint.TextSize <- fontsize
-        // paint.Typeface <- typefaces[0]
 
 
     let dx (t:string) s (paint:SKPaint) = paint.MeasureText(t) * s
@@ -175,10 +182,10 @@ module Typesetting =
                 draw italic i x y s paint canvas r
                 x <- x + dx i s paint
             | MathOperator o ->
-                draw italic o x y s paint canvas r
+                draw regular o x y s paint canvas r
                 x <- x + dx o s paint
             | Symbol (t,n) ->
-                draw italic n x y s paint canvas r
+                draw regular n x y s paint canvas r
                 x <- x + dx n s paint
             | Binary (n,lhs,rhs) ->
                 let us = measure [lhs] paint x y s 
@@ -186,8 +193,10 @@ module Typesetting =
                 let lw = max us.w ls.w
                 let ux = if us.w > 0.9f * lw then x else x + (lw - us.w) / 2.f
                 let lx = if ls.w > 0.9f * lw then x else x + (lw - ls.w) / 2.f                
-                typeset [lhs] ux (y + fontsize * s) paint canvas s r
-                typeset [rhs] lx (y - fontsize * s) paint canvas s r
+                let uy = y + us.h / 2f
+                let ly = y - ls.h / 2f
+                typeset [lhs] ux uy paint canvas s r
+                typeset [rhs] lx ly paint canvas s r
                 let pt0 = transform x y r 
                 let pt1 = transform (x + lw) y r
                 canvas.DrawLine(pt0, pt1, paint)
