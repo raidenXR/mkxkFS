@@ -88,10 +88,12 @@ module Model2 =
         m.UpdateBounds()
 
 
-    let createTeXModel (cons:Map<string,float>) (vars:Map<string,Variable>) (fns:Map<string,Binder.BoundExpr>) tex t (x:array<float>) c s =
+    let createTeXModel (cons:Map<string,float>) (vars:Map<string,Variable>) (fns:Map<string,Binder.BoundExpr>) tex t c s =
         let f = Parser.parse tex cons.Keys vars.Keys fns.Keys
         let b = Binder.bind f
-        let y = Array.zeroCreate<float> x.Length
+        let x = Array.zeroCreate<float> 100
+        let y = Array.zeroCreate<float> 100
+        // let (Model2D m) = createline x y c s
         let m = match (createline x y c s) with | Model2D m -> m | _ -> failwith "improper type"
         evalModel cons vars fns t b m
         TeXModel (tex, f, b, m)

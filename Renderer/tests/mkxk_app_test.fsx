@@ -1,5 +1,6 @@
 #r "nuget: System.Drawing.Common, 8.0.0"
 #r "../bin/Debug/net8.0/mkxkFS.dll"
+#r "../bin/Debug/net8.0/Notation.dll"
 #r "../bin/Debug/net8.0/Renderer.dll"
 #r "../bin/Debug/net8.0/SKCharts.dll"
 
@@ -11,56 +12,50 @@ open RendererFS
 
 
 // create some table of variables
-let variables = [
-    "a0", 1, 20
-    "a1", 1, 30
-    "a2", 1, 40
-    "a3", 1, 20
-    "T", 1, 30
-    "C_a", 1, 40
-    "C_{\\beta}", 1, 20
-    "C_A", 1, 30
-    "C_B", 1, 40
-    "C_{\\gamma}", 1, 20
-    "t", 1, 30
-    """C_{AB}""", 1, 40
-]
-let vars = variables |> List.map (fun (s, a, b) -> (s, {A = a; B = b; V = ValueNone })) |> Map.ofList
+let vars = 
+    [
+        "a0", 10, 120
+        "a1", 12, 30
+        "a2", 21, 40
+        "a3", 11, 200
+        "T", 0, 300
+        "C_a", 121, 400
+        "C_{\\beta}", 1, 20
+        "C_A", 1, 40
+        "C_B", 12, 40
+        "C_{\\gamma}", 110, 200
+        "t", 1, 30
+        """C_{AB}""", 1, 40
+    ] 
+    |> List.map (fun (s,a,b) -> s,{A = a; B = b; V = ValueNone})
+    |> Map.ofList
 
 // create some table of constants
-let constants = [
-    "N_A", 10
-    "e", 10
-    "k_A", 10
-    "R", 10
-    "E_A", 10
-    "A_0", 10
-    "A_1", 10
-    "A_2", 10
-    "A_n", 10
-    "N", 10
-] 
-let cons = constants |> List.map (fun (s, v) -> (s, float v)) |> Map.ofList
+let cons = Map [
+    "N_A", 10.05
+    "e", 1e-4
+    "k_A", 1e3
+    "R", 2.34 * 1e-7
+    "E_A", 100
+    "A_0", 1.342
+    "A_1", 8.097
+    "A_2", 1.12345 * 1e-4
+    "A_n", 1e7
+    "N", 8.235
+]
 
 // define some tex strings
 let [<Literal>] f0str = "f(x) = N_A + 4.5 - (C_A * 4.3) / C_B - 8^2"
 let [<Literal>] f1str = "g(x) = T + k_A - (C_A * 4.3) / C_B - t^2"
 let [<Literal>] f6str = "z(x) = A_n + A_2 - (C_A * 4.3) / A_1 - 8^2 + t^2"
 
-let fns = 
-    [
-        f0str[0..3], (Binder.bind (Parser.parse f0str cons.Keys vars.Keys []))
-        f1str[0..3], (Binder.bind (Parser.parse f1str cons.Keys vars.Keys []))
-        f6str[0..3], (Binder.bind (Parser.parse f6str cons.Keys vars.Keys []))
-    ] |> Map.ofList 
+let fnbind tex = Binder.bind (Parser.parse tex cons.Keys vars.Keys [])
 
-let rng_fns = 
-    [|
-    for i in 0..400 -> 
-        (FnGeneration.generatefnEXT "f(x)" cons.Keys vars.Keys fns.Keys 0.01 1e5 20)
-        // |> Mutation.withtarget "C_A"
-    |] 
-
+let fns = Map [
+    "f(x)", (fnbind f0str)
+    "g(x)", (fnbind f1str)
+    "z(x)", (fnbind f6str)
+]
 
 let desc: Mutation.OptimizationDesc = {
     constants = cons
@@ -70,11 +65,38 @@ let desc: Mutation.OptimizationDesc = {
     y = [|1.0..0.5..15.0|]
     err = 1e3
 }
-let (fns_optimized, _) = 
-    rng_fns 
-    |> Array.map (Mutation.optimizefn desc 400 0.1 1e5 "C_A")
+
+let mutable counter = 1
+
+let cout (pair:Expr * float) =
+    let struct(i,j) = Console.GetCursorPosition()
+    Console.WriteLine $"fn optimized: {counter}"
+    Console.SetCursorPosition(0,j)
+    counter <- counter + 1
+    pair
+
+let [<Literal>] N = 600 // optimization loop
+let [<Literal>] L = 600 // no of rng fns
+
+let parallel_opt = (Mutation.optimizefn desc N 0.1 1e3 "C_A") >> cout
+    
+printfn "rng-fn generation #time"
+#time
+let pipe0 =
+    Array.Parallel.init L (fun _ -> FnGeneration.generatefnEXT "f(x)" cons.Keys vars.Keys fns.Keys 0.01 1e5 20)
+#time
+
+printfn "\nrng-fn optimization #time"
+#time
+let pipe1 = 
+    pipe0
+    |> Array.Parallel.map parallel_opt
     |> Array.sortBy (fun (f,err) -> err)
     |> Array.take 10
+#time
+
+let (fns_optimized, _) = 
+    pipe1
     |> Array.unzip
 
 
@@ -85,16 +107,18 @@ html
 |> Html.close "functions.html"
 
 
-let x = [|for i in 0..40 -> float i|]
+let x = Array.init 40 (fun i -> float i)
+let y = Array.init 40 (fun i -> 1e-3 * x[i] * x[i] - 0.3 * x[i] + 1.25)
+let z = Array.init 40 (fun i -> 1e-2 * x[i] * x[i])
 
 let models = [
-    Model2.createpoints x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
-    Model2.createpoints x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
-    Model2.createTeXModel cons vars fns (latex (fns_optimized[0])) "C_A" x Colors.Green 2.0f
-    Model2.createTeXModel cons vars fns (latex (fns_optimized[1])) "C_A" x Colors.Red 2.0f
-    Model2.createTeXModel cons vars fns (latex (fns_optimized[2])) "C_A" x Colors.Blue 2.0f
-    Model2.createTeXModel cons vars fns (latex (fns_optimized[3])) "C_A" x Colors.Brown 2.0f
-    Model2.createTeXModel cons vars fns (latex (fns_optimized[4])) "C_A" x Colors.Silver 2.0f
+    Model2.createpoints x y Colors.Navy 4.2f
+    Model2.createpoints x z Colors.Purple 4.2f
+    Model2.createTeXModel cons vars fns (latex (fns_optimized[0])) "C_A" Colors.Green 2.0f
+    Model2.createTeXModel cons vars fns (latex (fns_optimized[1])) "C_A" Colors.Red 2.0f
+    Model2.createTeXModel cons vars fns (latex (fns_optimized[2])) "C_A" Colors.Blue 2.0f
+    Model2.createTeXModel cons vars fns (latex (fns_optimized[3])) "C_A" Colors.Brown 2.0f
+    Model2.createTeXModel cons vars fns (latex (fns_optimized[4])) "C_A" Colors.Silver 2.0f
 ]
 
 let names = [
