@@ -49,26 +49,15 @@ let [<Literal>] f0str = "f(x) = N_A + 4.5 - (C_A * 4.3) / C_B - 8^2"
 let [<Literal>] f1str = "g(x) = T + k_A - (C_A * 4.3) / C_B - t^2"
 let [<Literal>] f6str = "z(x) = A_n + A_2 - (C_A * 4.3) / A_1 - 8^2 + t^2"
 
-let fnbind tex = Binder.bind (Parser.parse tex cons.Keys vars.Keys [])
+let s': Symbols = {constants = cons.Keys; variables = vars.Keys; functions = []}
 
 let fns = Map [
-    "f(x)", (fnbind f0str)
-    "g(x)", (fnbind f1str)
-    "z(x)", (fnbind f6str)
+    "f(x)", (FnGeneration.fromtex s' f0str) 
+    "g(x)", (FnGeneration.fromtex s' f1str)
+    "z(x)", (FnGeneration.fromtex s' f6str)
 ]
 
-
-let mutable counter = 1
-
-let cout (pair:Expr * float) =
-    let struct(i,j) = Console.GetCursorPosition()
-    Console.WriteLine $"fn optimized: {counter}"
-    Console.SetCursorPosition(0,j)
-    counter <- counter + 1
-    pair
-
-let [<Literal>] N = 600 // optimization loop
-let [<Literal>] L = 600 // no of rng fns
+let maps: Maps = {constants = cons; variables = vars; functions = fns}
 
 // raw points
 let x = Array.init 40 (fun i -> float i)
@@ -76,51 +65,60 @@ let y = Array.init 40 (fun i -> 1e-3 * x[i] * x[i] - 0.3 * x[i] + 1.25)
 let z = Array.init 40 (fun i -> 1e-2 * x[i] * x[i])
 
 let desc: Mutation.OptimizationDesc = {
-    constants = cons
-    variables = vars
-    functions = fns
+    maps = maps
     x = x
-    y = y  // optimize vs rp0
+    y = z  // optimize vs rp0
     err = 1e3
 }
+let mutable counter = 1
+let [<Literal>] N = 400 // optimization loop
+let [<Literal>] L = 1600 // no of rng fns
+
+let cout (pair:Expr * float) =
+    if counter % 100 = 0 then
+        let struct(ci,cj) = Console.GetCursorPosition()
+        let p = 100. * (float counter / float L)
+        Console.WriteLine ($"fn optimized: {p:N2}" + "%")
+        Console.SetCursorPosition(0,cj)
+    counter <- counter + 1
+    pair
+
 let parallel_opt = (Mutation.optimizefn desc N 0.1 1e3 "C_A") >> cout
     
 printfn "rng-fn generation #time"
 #time
 let pipe0 =
-    Array.Parallel.init L (fun _ -> FnGeneration.generatefnEXT "f(x)" cons.Keys vars.Keys fns.Keys 0.01 1e5 20)
+    // Array.Parallel.init L (fun _ -> FnGeneration.generatefnEXT "f(x)" maps 0.01 1e5 20)
+    Array.Parallel.init L (fun _ -> FnGeneration.generatefnEXT "f(x)" s' TokenIdProbs.Default 0.01 1e5 20)
 #time
 
 printfn "\nrng-fn optimization #time"
 #time
-let pipe1 = 
+let (fns_optimized, errs) = 
     pipe0
     |> Array.Parallel.map parallel_opt
     |> Array.sortBy (fun (f,err) -> err)
     |> Array.take 10
-#time
-
-let (fns_optimized, errs) = 
-    pipe1
+    |> Array.map (fun (x,y) -> latex x, y)
     |> Array.unzip
-
+#time
 
 // keep a log of generated fns and their errors
 let html = Html.HtmlBuilder()
 html
 |> Html.header 2 "rng functions"
-|> Html.olist (Array.map2 (fun x y -> $"${(latex x)}$      err:{y:N6}") fns_optimized errs)
+|> Html.olist (Array.map2 (fun x y -> $"${x}$      err:{y:N6}") fns_optimized errs)
 |> Html.close "functions.html"
 
 
 let models = [
     Model2.createpoints x y Colors.Navy 4.2f
     Model2.createpoints x z Colors.Purple 4.2f
-    Model2.createTeXModel cons vars fns (latex (fns_optimized[0])) "C_A" Colors.Green 2.0f
-    Model2.createTeXModel cons vars fns (latex (fns_optimized[1])) "C_A" Colors.Red 2.0f
-    Model2.createTeXModel cons vars fns (latex (fns_optimized[2])) "C_A" Colors.Blue 2.0f
-    Model2.createTeXModel cons vars fns (latex (fns_optimized[3])) "C_A" Colors.Brown 2.0f
-    Model2.createTeXModel cons vars fns (latex (fns_optimized[4])) "C_A" Colors.Silver 2.0f
+    Model2.createTeXModel maps fns_optimized[0] "C_A" Colors.Green 2.0f
+    Model2.createTeXModel maps fns_optimized[1] "C_A" Colors.Red 2.0f
+    Model2.createTeXModel maps fns_optimized[2] "C_A" Colors.Blue 2.0f
+    Model2.createTeXModel maps fns_optimized[3] "C_A" Colors.Brown 2.0f
+    Model2.createTeXModel maps fns_optimized[4] "C_A" Colors.Silver 2.0f
 ]
 
 let names = [
@@ -136,6 +134,6 @@ let names = [
 Model2.setNames names models
  
 
-let renderer = Renderer(cons, vars, fns, models)
+let renderer = Renderer(maps, models)
 renderer.Run()
 Console.ReadKey()

@@ -58,44 +58,51 @@ module Model2 =
         m.Paint.StrokeWidth <- s
         Model2D m
 
-    let evalModel (cons:Map<string,float>) (vars:Map<string,Variable>) (fns:Map<string,Binder.BoundExpr>) t f (m:SKCharts.Model2D) =
-        let xvalues = m.Xvalues
-        let yvalues = m.Yvalues
+    // let evalModel (cons:Map<string,float>) (vars:Map<string,Variable>) (fns:Map<string,Binder.BoundExpr>) t f (m:SKCharts.Model2D) =
+    let evalModel (m:Maps) t f (model:SKCharts.Model2D) :unit =
+        let xvalues = model.Xvalues
+        let yvalues = model.Yvalues
         let N = xvalues.Length
         let n = N / 2 + 1
-        let dx = (vars[t].B - vars[t].A) / float n
+        let dx = (m.variables[t].B - m.variables[t].A) / float n
 
-        let mutable x = vars[t].A
-        vars[t].V <- ValueSome x
+        let mutable x = m.variables[t].A
+        m.variables[t].V <- ValueSome x
         xvalues[0] <- x
-        yvalues[0] <- Evaluation.eval cons vars fns t f
+        yvalues[0] <- Evaluation.eval m t f
 
         let mutable i = 1
         while i + 1 < N do
             x <- x + dx
-            vars[t].V <- ValueSome x
-            let y = Evaluation.eval cons vars fns t f
+            m.variables[t].V <- ValueSome x
+            let y = Evaluation.eval m t f
             xvalues[i + 0] <- x
             xvalues[i + 1] <- x 
             yvalues[i + 0] <- y
             yvalues[i + 1] <- y 
             i <- i + 2
 
-        x <- vars[t].B
-        vars[t].V <- ValueSome x
+        x <- m.variables[t].B
+        m.variables[t].V <- ValueSome x
         xvalues[xvalues.Length - 1] <- x
-        yvalues[yvalues.Length - 1] <- (Evaluation.eval cons vars fns t f)           
-        m.UpdateBounds()
+        yvalues[yvalues.Length - 1] <- (Evaluation.eval m t f)           
+        model.UpdateBounds()
 
 
-    let createTeXModel (cons:Map<string,float>) (vars:Map<string,Variable>) (fns:Map<string,Binder.BoundExpr>) tex t c s =
-        let f = Parser.parse tex cons.Keys vars.Keys fns.Keys
+    // let createTeXModel (cons:Map<string,float>) (vars:Map<string,Variable>) (fns:Map<string,Binder.BoundExpr>) tex t c s =
+    let createTeXModel (maps:Maps) tex t c s :Model =
+        let s': Symbols = {
+            constants = maps.constants.Keys
+            variables = maps.variables.Keys
+            functions = maps.functions.Keys
+        }
+        let f = Parser.parse s' tex
         let b = Binder.bind f
         let x = Array.zeroCreate<float> 100
         let y = Array.zeroCreate<float> 100
         // let (Model2D m) = createline x y c s
         let m = match (createline x y c s) with | Model2D m -> m | _ -> failwith "improper type"
-        evalModel cons vars fns t b m
+        evalModel maps t b m
         TeXModel (tex, f, b, m)
 
 
@@ -131,16 +138,21 @@ module Views =
             AttrBuilder<'t>.CreateProperty<obj>(ToggleButton.ContentProperty, value, ValueNone)
 
 
+    // let ComponentSlider 
+    //     (id:string)
+    //     (value:string * Variable) 
+    //     (cons:Map<string,float>) 
+    //     (vars:Map<string,Variable>) 
+    //     (fns:Map<string,Binder.BoundExpr>) 
+    //     (tex_models: array<string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2D>)
+    //     (target:IReadable<string>) 
+    //     (chart:SKChart2D) =
     let ComponentSlider 
-        (id:string)
         (value:string * Variable) 
-        (cons:Map<string,float>) 
-        (vars:Map<string,Variable>) 
-        (fns:Map<string,Binder.BoundExpr>) 
+        (maps:Maps) 
         (tex_models: array<string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2D>)
         (target:IReadable<string>) 
         (chart:SKChart2D) =
-
         Component(fun ctx ->
             let (s,v) = value
             let variable = ctx.useState (match v.V with | ValueSome _v -> _v | ValueNone -> v.A + (v.B - v.A) / 2.0)
@@ -164,11 +176,11 @@ module Views =
                         Slider.maximum v.B
                         Slider.value variable.Current    
                         Slider.onValueChanged (fun d ->
-                            vars[s].V <- ValueSome d
+                            maps.variables[s].V <- ValueSome d
 
                             for (tex, f, b, m) in tex_models do
                                 if target.Current <> String.Empty && s <> target.Current && tex.Contains(s) then
-                                    evalModel cons vars fns target.Current b m
+                                    evalModel maps target.Current b m
 
                             chart.NormalizeModels()
                             variable.Set d
@@ -186,7 +198,8 @@ module Views =
         )
 
 
-    let view2 (constants:Map<string,float>, variables:Map<string,Variable>, functions:Map<string,Binder.BoundExpr>, models:list<Model>) =
+    // let view2 (constants:Map<string,float>, variables:Map<string,Variable>, functions:Map<string,Binder.BoundExpr>, models:list<Model>) =
+    let view2 (maps:Maps, models:list<Model>) =
         Component(fun ctx ->
             let tex_models = texModels models
             let raw_models = rawModels models            
@@ -210,18 +223,18 @@ module Views =
             
             let _cons =
                 cons_strs
-                |> Array.filter (fun x -> constants.ContainsKey x)
-                |> Array.map (fun x -> x,constants[x])
+                |> Array.filter (fun x -> maps.constants.ContainsKey x)
+                |> Array.map (fun x -> x,maps.constants[x])
 
             let _vars = 
                 symbols_strs 
-                |> Array.filter (fun x -> variables.ContainsKey x) 
-                |> Array.map (fun x -> x,variables[x])
+                |> Array.filter (fun x -> maps.variables.ContainsKey x) 
+                |> Array.map (fun x -> x,maps.variables[x])
 
             let _fns =
                 symbols_strs
-                |> Array.filter (fun x -> functions.ContainsKey x)
-                |> Array.map (fun x -> x,functions[x])
+                |> Array.filter (fun x -> maps.functions.ContainsKey x)
+                |> Array.map (fun x -> x,maps.functions[x])
 
             let cons = ctx.useState _cons
             let vars = ctx.useState _vars
@@ -339,7 +352,7 @@ module Views =
 
                                         _vars
                                         |> Array.except [|(t, v)|]
-                                        |> Array.map (fun (x, _) -> x,variables[x])
+                                        |> Array.map (fun (x, _) -> x,maps.variables[x])
                                         |> vars.Set
 
                                         target.Set t
@@ -348,12 +361,12 @@ module Views =
                                         // to min to match sliders values
                                         _vars
                                         |> Seq.iter (fun (x, _) -> 
-                                            variables[x].V <- ValueSome (variables[x].A + (variables[x].B - variables[x].A) / 2.)
+                                            maps.variables[x].V <- ValueSome (maps.variables[x].A + (maps.variables[x].B - maps.variables[x].A) / 2.)
                                         )
                                        
                                         for (tex, f, b, m) in tex_models do
                                             // if target <> String.Empty then
-                                                evalModel constants variables functions target.Current b m
+                                                evalModel maps target.Current b m
 
                                         c.Chart.NormalizeModels()
                                         c.Chart.XImg <- (Converter.image target.Current)        
@@ -377,7 +390,8 @@ module Views =
                                 ListBox.column 0
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems [for i in vars.Current -> ComponentSlider $"slider-{i}" i constants variables functions tex_models target c.Chart]
+                                // ListBox.dataItems [for i in vars.Current -> ComponentSlider $"slider-{i}" i constants variables functions tex_models target c.Chart]
+                                ListBox.dataItems [for i in vars.Current -> ComponentSlider i maps tex_models target c.Chart]
                             ]
                             ListBox.create [
                                 ListBox.column 1

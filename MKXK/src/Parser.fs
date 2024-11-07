@@ -5,37 +5,23 @@ open System.Text
 open Lexer
 open ExprTree
 
-type Parser(source: string, constants: seq<string>, variables: seq<string>, functions: seq<string>) = 
-    // let mutable pos = 0
-    // let symbols = Seq.concat [variables; constants; functions]
-    // let lexer = Lexer(source, symbols)
-    // let tokens = System.Collections.Generic.List<Token>()
+type Symbols = {
+    constants: seq<string>
+    variables: seq<string>
+    functions: seq<string>
+}
 
-    // let valid (token:Token) = token.Id <> Whitespace && token.Id <> Bad && token.Id <> Comment
-    // let insertcdot (a:Token) (b:Token) = 
-    //     (a.Id = Identifier || a.Id = TokenId.Number || a.Id = RightParen) && (b.Id = Identifier || b.Id = LeftParen || b.Id = LeftBrace)
-
-    // let rec parse_tokens (next_token: option<Token>) (tokens: System.Collections.Generic.List<Token>) =
-    //     match next_token with
-    //     | Some token when valid token ->   // check if token is valid for parsing
-    //         match tokens with
-    //         | [] -> parse_tokens (lexer.nextToken()) (tokens.Append token)
-    //         | h::t when insertcdot h token -> 
-    //             tokens.Add(Token(token.Pos, "\\cdot", Cdot))
-    //             parse_tokens (lexer.nextToken()) (tokens.Append token) 
-    //         | h::t -> parse_tokens (lexer.nextToken()) (token::tokens)
-    //     | _ -> tokens   // when parsing finishes return reveresed tokens list
-
-    // let tokens = parse_tokens (lexer.nextToken()) tokens
+type Parser(source: string, symbols:Symbols) = 
+// type Parser(source: string, constants: seq<string>, variables: seq<string>, functions: seq<string>) = 
     let mutable pos = 0
     let mutable tokens: list<Token> = []
     let append (token: Token) = tokens <- tokens @ [token]
     // let tokens = new System.Collections.Generic.List<Token>(20)
     // let symbols = variables |> Array.append constants |> Array.append functions
-    let symbols = Seq.concat [variables; constants; functions] |> Array.ofSeq
+    let symbols' = Seq.concat [symbols.variables; symbols.constants; symbols.functions] |> Array.ofSeq
 
     do
-        let lexer = Lexer(source, symbols)
+        let lexer = Lexer(source, symbols')
         let mutable token = lexer.nextToken()
         while token.IsSome do
             let _token = token.Value
@@ -119,9 +105,9 @@ type Parser(source: string, constants: seq<string>, variables: seq<string>, func
         | TokenId.Frac -> parseFrac()
         | Identifier -> 
             let literal = nextToken()
-            if variables.Contains literal.Str then Symbol (ref literal.Str)
-            elif constants.Contains literal.Str then Constant (ref literal.Str)
-            elif variables.Contains literal.Str then Symbol (ref literal.Str)
+            if symbols.variables.Contains literal.Str then Symbol (ref literal.Str)
+            elif symbols.constants.Contains literal.Str then Constant (ref literal.Str)
+            elif symbols.variables.Contains literal.Str then Symbol (ref literal.Str)
             else Symbol (ref literal.Str)
         | TokenId.Number -> 
             let literal = nextToken()
@@ -265,20 +251,11 @@ type Parser(source: string, constants: seq<string>, variables: seq<string>, func
         let lower = parseExpr()
         ignore (matchToken RightBrace)
 
-        PDE (upper, lower)
-                
-    // new(source: string) = Parser(source, None)
-    // new(source: string, constants: string array, variables: string array, functions: string array) = Parser(source, Some maps)
-    new(source: string) = Parser(source, [||], [||], [||])
-    // new(source: string, constants: string array, variables: string array, functions: string array) = Parser(source, constants, variables, functions)
-
-    // member this.Parse() = ignore()
-
-    // member this.Pos with get() = pos
+        PDE (upper, lower)                
 
     member x.Tokens with get() = tokens
 
-    member x.Symbols with get() = symbols
+    member x.Symbols with get() = symbols'
 
     /// parses some latex str and returns the root(Expr) of the AST
     member this.ParseExpr() = if tokens.IsEmpty then ExprNone else parseExpr()
@@ -286,8 +263,10 @@ type Parser(source: string, constants: seq<string>, variables: seq<string>, func
 
 module Parser =
     /// Parses a tex string and returns an Expr
-    let parse (tex:string) (constants:seq<string>) (variables:seq<string>) (functions:seq<string>) :Expr = 
-        let parser = Parser(tex, constants, variables, functions)
+    let parse (symbols:Symbols) (tex:string) :Expr = 
+    // let parse (tex:string) (constants:seq<string>) (variables:seq<string>) (functions:seq<string>) :Expr = 
+        let parser = Parser(tex, symbols)
+        // let parser = Parser(tex, constants, variables, functions)
         parser.ParseExpr()
 
     /// parses a file that contains gnu-points columns

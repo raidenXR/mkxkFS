@@ -10,11 +10,48 @@ type FnDescription = {
     err: float
 }
 
+type TokenIdProbs = {
+        Pnumber: int
+        Pconstant: int
+        Pvariable: int
+        Pfunction: int
+        Pbinary: int
+        Punary: int
+        Pparen: int
+        Pfrac: int
+        Psum: int
+        Pprod: int
+        Pint: int
+        Pdiff: int
+    } 
+    with 
+        static member Default = {
+            Pnumber = 10
+            Pconstant = 10
+            Pvariable = 10
+            Pfunction = 10
+            Pbinary = 15
+            Punary = 15
+            Pparen = 10
+            Pfrac = 10
+            Psum = 0
+            Pprod = 0
+            Pint = 0
+            Pdiff = 0
+        }
+        member x.ToArray() = Array.map float [|
+            x.Pnumber; x.Pconstant; x.Pvariable; x.Pfunction
+            x.Pbinary; x.Punary; x.Pparen; x.Pfrac
+            x.Psum; x.Pprod; x.Pint; x.Pdiff
+        |]
+
+
 module FnGeneration =
-    type FnGenerator(constants:seq<string>, variables:seq<string>, functions:seq<string>, lbound:float, ubound:float, maxcount: int) =
-        let cons = constants |> Array.ofSeq
-        let vars = variables |> Array.ofSeq
-        let fns = functions |> Array.ofSeq
+    type FnGenerator(symbols:Symbols, probs:TokenIdProbs, lbound:float, ubound:float, maxcount: int) =
+    // type FnGenerator(constants:seq<string>, variables:seq<string>, functions:seq<string>, lbound:float, ubound:float, maxcount: int) =
+        let cons = Array.ofSeq symbols.constants
+        let vars = Array.ofSeq symbols.variables
+        let fns  = Array.ofSeq symbols.functions
 
         let cons_map = System.Collections.Generic.Dictionary<string,int>()
         let vars_map = System.Collections.Generic.Dictionary<string,int>()
@@ -23,23 +60,25 @@ module FnGeneration =
         let binaryops = [|Plus; Minus; Star; Cdot; Slash; Accent|]
         let unaryops = [|Plus; Minus; Log; Ln; Exp; Sqrt|]
 
+        let ps = probs.ToArray()
+        // let ps = {TokenIdProbs.Default with Pnumber = 5}.ToArray()
         // probabilities for each Node-type
-        let ps = 
-            [|
-                10 // Pnumber 
-                10 // Pconstant
-                10 // Pvariable
-                10 // Pfunction
-                15 // Pbinary
-                15 // Punary
-                10 // Pparen
-                10 // Pfrac
-                0 // Psum
-                0 // Pprod
-                0 // Pint
-                0 // Pdiff
-                0 // 
-            |] |> Array.map (float)    
+        // let ps = 
+        //     [|
+        //         10 // Pnumber 
+        //         10 // Pconstant
+        //         10 // Pvariable
+        //         10 // Pfunction
+        //         15 // Pbinary
+        //         15 // Punary
+        //         10 // Pparen
+        //         10 // Pfrac
+        //         0 // Psum
+        //         0 // Pprod
+        //         0 // Pint
+        //         0 // Pdiff
+        //         0 // 
+        //     |] |> Array.map (float)    
         let r = Random()
         
         /// updates the values on probabilities vector in [0,1] range
@@ -200,49 +239,43 @@ module FnGeneration =
             Frac (u, l)
 
 
-        // ctors
-        new(cons:seq<string>, vars:seq<string>, lbound:float, ubound:float) = FnGenerator(cons, vars, [], lbound, ubound, 40) 
-        
-        // member val Count = 0 with get, set
-        // member val N_unaries = 0 with get, set
-        // member val N_binaries = 0 with get, set
-        // member val N_numbers = 0 with get, set
-        // member val N_variables = 0 with get, set
-        // member val N_constants = 0 with get, set
-        // member val N_functions = 0 with get, set
-        // member val N_parens = 0 with get, set
-        // member val Numbers_range: (float * float) = (0., 1.) with get, set        
-
         /// Creates a randomly generated function, with the designated lhs-string tag-name
         member _.fngenerate (fn_name:string) :Expr =
             let binary = createBinary binaryops
             Assignment (fn_name, binary)
 
 
+    // let generatefn 
+    //     (fn_name:string) 
+    //     (constants:seq<string>) 
+    //     (variables:seq<string>) 
+    //     (functions:seq<string>) 
+    //     lbound 
+    //     ubound 
+    //     maxnodes :Expr =
+    //     let generator = FnGenerator(constants, variables, functions, lbound, ubound, maxnodes)
+    //     generator.fngenerate fn_name
 
-    let generatefn 
-        (fn_name:string) 
-        (constants:seq<string>) 
-        (variables:seq<string>) 
-        (functions:seq<string>) 
-        lbound 
-        ubound 
-        maxnodes :Expr =
-        let generator = FnGenerator(constants, variables, functions, lbound, ubound, maxnodes)
-        generator.fngenerate fn_name
 
+    let generatefn (fn_name:string) (symbols:Symbols) (probs:TokenIdProbs) lbound ubound maxnodes :Expr =
+        let generator = FnGenerator(symbols, probs, lbound, ubound, maxnodes)
+        generator.fngenerate fn_name    
 
-    let generatefnEXT 
-        (fn_name:string) 
-        (constans:seq<string>) 
-        (variables:seq<string>) 
-        (functions:seq<string>)
-        (lbound:float)
-        (ubound:float)
-        (maxnodes:int) :Expr = 
-        let mutable fn = generatefn fn_name constans variables functions lbound ubound maxnodes
+    /// parses a BoundExpr from a tex-string
+    let fromtex (symbols:Symbols) (tex:string) = Binder.bind (Parser.parse symbols tex)
+
+    // let generatefnEXT 
+    //     (fn_name:string) 
+    //     (constans:seq<string>) 
+    //     (variables:seq<string>) 
+    //     (functions:seq<string>)
+    //     (lbound:float)
+    //     (ubound:float)
+    //     (maxnodes:int) :Expr = 
+    let generatefnEXT fn_name (symbols:Symbols) (probs:TokenIdProbs) lbound ubound maxnodes :Expr = 
+        let mutable fn = generatefn fn_name symbols probs lbound ubound maxnodes
         while (ExprTree.variablesAll fn).Length < 2 do
-            fn <- generatefn fn_name constans variables functions lbound ubound maxnodes
+            fn <- generatefn fn_name symbols probs lbound ubound maxnodes
         fn
 
         
@@ -250,15 +283,22 @@ module Mutation =
     open ExprTree
 
     type OptimizationDesc = {
-        constants: Map<string,float>
-        variables: Map<string,Variable>
-        functions: Map<string,Binder.BoundExpr>
+        // constants: Map<string,float>
+        // variables: Map<string,Variable>
+        // functions: Map<string,Binder.BoundExpr>
+        maps: Maps
         x: array<float>
         y: array<float>        
         err: float
     }
 
             
+    // type OptimizationDesc = {
+    //     maps: Maps
+    //     x: array<float>
+    //     y: array<float>        
+    //     err: float
+    // }
             
 
     /// select random element from an array
@@ -311,9 +351,12 @@ module Mutation =
 
 
     let optimizefn (pars:OptimizationDesc) N lb ub t f :Expr*float =
-        let cons = pars.constants.Keys |> Array.ofSeq
-        let vars = pars.variables.Keys |> Array.ofSeq
-        let fns = pars.functions.Keys |> Array.ofSeq
+        // let cons = pars.constants.Keys |> Array.ofSeq
+        // let vars = pars.variables.Keys |> Array.ofSeq
+        // let fns  = pars.functions.Keys |> Array.ofSeq
+        let cons = Array.ofSeq (pars.maps.constants.Keys)
+        let vars = Array.ofSeq (pars.maps.variables.Keys)
+        let fns  = Array.ofSeq (pars.maps.functions.Keys)
     
         let fn = copy f        // copy of f to mutate, the original f is not mutated
         let mutable fn_out = copy f
@@ -341,7 +384,8 @@ module Mutation =
                 // ensure that targets for evaluation always exists and mutation does not break it
                 if not (vs |> Array.exists (fun x -> x.Value = t)) 
                     then vs[r.Next(vs.Length)].Value <- t
-                Evaluation.evalvalues yret pars.constants pars.variables pars.functions t (Binder.bind fn)
+                // Evaluation.evalvalues yret pars.constants pars.variables pars.functions t (Binder.bind fn)
+                Evaluation.evalvalues yret pars.maps t (Binder.bind fn)
                 let err = rmse pars.y yret
                 if err < err0 then 
                     fn_out <- copy fn  

@@ -340,27 +340,6 @@ module ExprTree =
             write (string f)
             write " "
 
-            match f with
-            | Number n -> write (n.Value.ToString("N4"))
-            | Constant c -> write c.Value
-            | Symbol s -> write s.Value 
-            | Assignment _ -> write "="
-            | Binary (_, _, op) -> write (string op.Value)
-            | Unary (_, op) -> write (string op.Value)
-            | Sum _ -> write "\\sum"
-            | Prod _ -> write "\\prod"
-            | Int _ -> write "\\int"
-            | Diff _ -> write "\\diff"
-            | ODE _ -> write "\\ode"
-            | PDE _ -> write "\\pde"
-            | _ -> write ""
-            // | _ -> failwith $"{f} not implemented yet"
-
-            // write "\n"
-            // let indent' = indent + if is_last then "    " else "|   "
-            // match children f with
-            // | h::t when t.Length > 0 -> print_tree indent' true h            
-            // | _ -> ()
             write "\n"
             let indent' = indent + if is_last then "    " else "|   "
             let children' = children f
@@ -610,29 +589,36 @@ module Binder =
             let lower = bind b
             PDE (upper, lower)            
         | _ -> failwith "not implemented case"
+
+
     
 
-
+type Maps = {
+    constants: Map<string,float>
+    variables: Map<string,Variable>
+    functions: Map<string,Binder.BoundExpr>
+}
 
 module Evaluation =
     open Binder
     
-    let rec eval (cons: Map<string,float>) (vars: Map<string,Variable>) (fns: Map<string,BoundExpr>) t f :float =
+    // let rec eval (cons: Map<string,float>) (vars: Map<string,Variable>) (fns: Map<string,BoundExpr>) t f :float =
+    let rec eval (m:Maps) (t:string) (f:BoundExpr) :float = 
         match f with 
         | Number n -> n
-        | Constant c -> cons[c]
+        | Constant c -> m.constants[c]
         | Symbol s -> 
-            if vars.ContainsKey s then
-                let v = vars[s]
+            if m.variables.ContainsKey s then
+                let v = m.variables[s]
                 match v.V with 
                 | ValueSome s -> s
                 | ValueNone -> v.A + (v.B - v.A) / 2.
-            elif fns.ContainsKey s then eval cons vars fns t fns[s]
+            elif m.functions.ContainsKey s then eval m t m.functions[s]
             else failwith $"symbol -{s}- not found in maps"
-        | Assignment (l, r) -> eval cons vars fns t r
+        | Assignment (l, r) -> eval m t r
         | Binary (l, r, op) -> 
-            let lhs = eval cons vars fns t l
-            let rhs = eval cons vars fns t r
+            let lhs = eval m t l
+            let rhs = eval m t r
             match op with 
             | BinaryOp.Addition -> lhs + rhs
             | BinaryOp.Subtraction -> lhs - rhs
@@ -641,7 +627,7 @@ module Evaluation =
             | BinaryOp.Power -> lhs ** rhs
             | _ -> failwith "not implemented"
         | Unary (o, op) -> 
-            let operand = eval cons vars fns t o
+            let operand = eval m t o
             match op with
             | UnaryOp.Identity -> operand
             | UnaryOp.Negation -> -operand
@@ -655,44 +641,44 @@ module Evaluation =
             let mutable i' = i
             let mutable res = 0.
             while i' < n do 
-                res <- res + (eval cons vars fns t f)
+                res <- res + (eval m t f)
                 i' <- i' + 1
             res
         | Prod (i, n, f) -> 
             let mutable i' = i
             let mutable res = 0.
             while i' < n do
-                res <- res + (eval cons vars fns t f)
+                res <- res + (eval m t f)
                 i' <- i' + 1
             res
         | Int (a, b, f) ->
             let dx = (b - a) / 1000.
             let mutable x = a
             let mutable res = 0.
-            vars["dx"].V <- ValueSome 1.0
-            vars["x"].V <- ValueSome x
+            m.variables["dx"].V <- ValueSome 1.0
+            m.variables["x"].V <- ValueSome x
 
             for i in 0..1000 do
                 x <- x + dx
-                vars["x"].V <- ValueSome x
-                let fx = eval cons vars fns t f
+                m.variables["x"].V <- ValueSome x
+                let fx = eval m t f
                 res <- dx * if i % 2 = 0 then fx * 4. / 3. else fx * 2. / 3.            
             // lhs
-            res <- res + ((eval cons vars fns t f) * dx / 3.)
+            res <- res + ((eval m t f) * dx / 3.)
             // rhs
-            res <- res + ((eval cons vars fns t f) * dx / 3.)
+            res <- res + ((eval m t f) * dx / 3.)
             res
         | Diff (u, l) -> 
             let h = 0.001
-            let v = vars[t]
+            let v = m.variables[t]
             let x = match v.V with | ValueSome s -> s | ValueNone -> v.A + (v.B - v.A) / 2.
             let a = x - h / 2.
             let b = x + h / 2.
             
-            vars[t].V <- ValueSome a
-            let fa = eval cons vars fns t u
-            vars[t].V <- ValueSome b
-            let fb = eval cons vars fns t l
+            m.variables[t].V <- ValueSome a
+            let fa = eval m t u
+            m.variables[t].V <- ValueSome b
+            let fb = eval m t l
             (fb - fa) / h
         | ODE (a, b) -> 
             // solve ODE with RK4
@@ -716,15 +702,15 @@ module Evaluation =
             t' <- a
 
             // initial y-evaluation
-            y[0] <- eval cons vars fns t f
-            vars[t].V <- ValueSome (vars[t].A + h)
-            y[1] <- eval cons vars fns t f
+            y[0] <- eval m t f
+            m.variables[t].V <- ValueSome (m.variables[t].A + h)
+            y[1] <- eval m t f
 
             // capture the evaluation step inside the f-function block
             let fn (tx: float, y: array<float>, fret:array<float>) = 
-                vars[t].V <- ValueSome tx
+                m.variables[t].V <- ValueSome tx
                 fret[0] <- y[1]
-                fret[1] <- eval cons vars fns t f
+                fret[1] <- eval m t f
         
             while t' < b do
                 if ((t' + h) > b) then h <- b - t'
@@ -751,13 +737,13 @@ module Evaluation =
             
 
     /// apply the eval function on a series of x-values and store the results on a y-array (target)
-    let evalvalues (yret:array<float>) cons (vars:Map<string,Variable>) fns t f :unit =
-        let v = vars[t]
+    let evalvalues (yret:array<float>) (m:Maps) t f :unit =
+        let v = m.variables[t]
         let dx = (v.B - v.A) / (float yret.Length)
         v.V <- ValueSome v.A
         for i in 0..yret.Length - 1 do
-            yret[i] <- eval cons vars fns t f
+            yret[i] <- eval m t f
             v.V <- ValueSome (v.V.Value + dx)
         v.V <- ValueSome v.B
-        yret[yret.Length - 1] <- eval cons vars fns t f
+        yret[yret.Length - 1] <- eval m t f
             
