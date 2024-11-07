@@ -57,14 +57,6 @@ let fns = Map [
     "z(x)", (fnbind f6str)
 ]
 
-let desc: Mutation.OptimizationDesc = {
-    constants = cons
-    variables = vars
-    functions = fns
-    x = [|1.0..30.0|]
-    y = [|1.0..0.5..15.0|]
-    err = 1e3
-}
 
 let mutable counter = 1
 
@@ -78,6 +70,19 @@ let cout (pair:Expr * float) =
 let [<Literal>] N = 600 // optimization loop
 let [<Literal>] L = 600 // no of rng fns
 
+// raw points
+let x = Array.init 40 (fun i -> float i)
+let y = Array.init 40 (fun i -> 1e-3 * x[i] * x[i] - 0.3 * x[i] + 1.25)
+let z = Array.init 40 (fun i -> 1e-2 * x[i] * x[i])
+
+let desc: Mutation.OptimizationDesc = {
+    constants = cons
+    variables = vars
+    functions = fns
+    x = x
+    y = y  // optimize vs rp0
+    err = 1e3
+}
 let parallel_opt = (Mutation.optimizefn desc N 0.1 1e3 "C_A") >> cout
     
 printfn "rng-fn generation #time"
@@ -95,21 +100,18 @@ let pipe1 =
     |> Array.take 10
 #time
 
-let (fns_optimized, _) = 
+let (fns_optimized, errs) = 
     pipe1
     |> Array.unzip
 
 
+// keep a log of generated fns and their errors
 let html = Html.HtmlBuilder()
 html
 |> Html.header 2 "rng functions"
-|> Html.olist (Array.map (fun x -> $"${(latex x)}$") fns_optimized)
+|> Html.olist (Array.map2 (fun x y -> $"${(latex x)}$      err:{y:N6}") fns_optimized errs)
 |> Html.close "functions.html"
 
-
-let x = Array.init 40 (fun i -> float i)
-let y = Array.init 40 (fun i -> 1e-3 * x[i] * x[i] - 0.3 * x[i] + 1.25)
-let z = Array.init 40 (fun i -> 1e-2 * x[i] * x[i])
 
 let models = [
     Model2.createpoints x y Colors.Navy 4.2f
