@@ -103,6 +103,15 @@ module Typesetting =
 
     // let printatoms ()
 
+    
+    let private paint = new SKPaint(
+        Typeface = regular[0],
+        Color = SKColors.Black,
+        IsAntialias = true,
+        TextSize = fontsize,
+        StrokeWidth = 1.3f
+    )
+
     let rec printExprs (exprs:seq<Expr>) (indent:string) =
         printf "%s" indent
         for expr in exprs do
@@ -124,7 +133,7 @@ module Typesetting =
             | _ -> failwith $"(string expr) not implemented yet"
 
 
-    let rec measureHBox (expr:Expr) (paint:SKPaint) x y s :HBox = 
+    let rec measureHBox (expr:Expr) x y s :HBox = 
         match expr with
         | Number n ->
             paint.Typeface <- regular[1]
@@ -143,8 +152,8 @@ module Typesetting =
             let y_line = y + s * fontsize / 2f
             let y_lhs = y_line + s * fontsize
             let y_rhs = y_line - s * fontsize
-            let lhs = measureHBox l paint x y_lhs s
-            let rhs = measureHBox r paint x y_rhs s
+            let lhs = measureHBox l x y_lhs s
+            let rhs = measureHBox r x y_rhs s
             // let y_upper = y_lhs + if lhs.ymin < y_line then abs (lhs.ymin - y_line) else 0f
             // let y_lower = y_rhs + if rhs.ymax > y_line then - abs (rhs.ymax - y_line) else 0f
             // let lhs' = measureHBox l paint x y_upper s
@@ -154,30 +163,30 @@ module Typesetting =
         | Grouped group ->
             let mutable hbox = {xmin = x; xmax = x; ymin = y; ymax = y}
             for g in group do
-                hbox <- hbox + measureHBox g paint hbox.xmax y s 
+                hbox <- hbox + measureHBox g hbox.xmax y s 
             hbox
         | Up (e,u) ->
-            let e_hbox = measureHBox e paint x y s
+            let e_hbox = measureHBox e x y s
             let yu = e_hbox.ymax - fontsize  / 2f
-            measureHBox u paint x yu (0.8f * s)
+            measureHBox u x yu (0.8f * s)
         | Down (e,d) ->
-            let e_hbox = measureHBox e paint x y s                
+            let e_hbox = measureHBox e x y s                
             let yd = e_hbox.ymin - fontsize / 3f
-            measureHBox d paint x yd (0.8f * s)
+            measureHBox d x yd (0.8f * s)
         | _ -> failwith $"{string expr} is not implemented"
 
 
-    let rec measure (exprs:seq<Expr>) (paint:SKPaint) x y s :HBox =
+    let rec measure (exprs:seq<Expr>) x y s :HBox =
         let mutable hbox = {xmin = x; xmax = x; ymin = y; ymax = y}
         for expr in exprs do
-            hbox <- hbox + measureHBox expr paint hbox.xmax y s
+            hbox <- hbox + measureHBox expr hbox.xmax y s
         hbox        
 
 
     let rec measureWithPrint (exprs:seq<Expr>) (paint:SKPaint) x y s :unit = 
         let mutable hbox = {xmin = 0f; xmax = 0f; ymin = 0f; ymax = 0f}
         for expr in exprs do
-            hbox <- hbox + measureHBox expr paint hbox.xmax y s
+            hbox <- hbox + measureHBox expr hbox.xmax y s
             printfn "%s  xmin:%f, xmax:%f, ymin:%f, ynax:%f" (string expr) hbox.xmin hbox.xmax hbox.ymin hbox.ymax        
 
 
@@ -203,19 +212,19 @@ module Typesetting =
     let rec typesetHBox (expr:Expr) (x:byref<float32>) (y:byref<float32>) (paint:SKPaint) (canvas:SKCanvas) s size :unit =
         match expr with
         | Number n ->
-            let hbox = measureHBox expr paint x y s
+            let hbox = measureHBox expr x y s
             draw regular n x y s paint canvas size
             x <- x + hbox.W
         | Identifier i ->
-            let hbox = measureHBox expr paint x y s
+            let hbox = measureHBox expr x y s
             draw italic i x y s paint canvas size
             x <- x + hbox.W
         | MathOperator o ->
-            let hbox = measureHBox expr paint x y s
+            let hbox = measureHBox expr x y s
             draw regular o x y s paint canvas size
             x <- x + hbox.W
         | Symbol (t,n) ->
-            let hbox = measureHBox expr paint x y s
+            let hbox = measureHBox expr x y s
             draw italic n x y s paint canvas size
             x <- x + hbox.W
         | Binary (n,l,r) ->
@@ -223,8 +232,8 @@ module Typesetting =
             let y_line = y + s * fontsize / 2f
             let y_lhs = y_line + s * fontsize
             let y_rhs = y_line - s * fontsize
-            let lhs = measureHBox l paint x y_lhs s
-            let rhs = measureHBox r paint x y_rhs s
+            let lhs = measureHBox l x y_lhs s
+            let rhs = measureHBox r x y_rhs s
             let width = max lhs.W rhs.W
             let mutable x_lhs = if lhs.W > 0.9f * width then x else x + (width - lhs.W) / 2f
             let mutable x_rhs = if rhs.W > 0.9f * width then x else x + (width - rhs.W) / 2f
@@ -245,15 +254,15 @@ module Typesetting =
                 // typesetHBox g &x' &y' paint canvas s size
             // x <- x'
         | Up (e,u) ->
-            let e_hbox = measureHBox e paint x y s
+            let e_hbox = measureHBox e x y s
             let mutable yu = e_hbox.ymax - fontsize  / 2f
-            let u_hbox = measureHBox u paint x yu (0.8f * s)
+            let u_hbox = measureHBox u x yu (0.8f * s)
             typesetHBox u &x &yu paint canvas (0.8f * s) size
             x <- x + u_hbox.W
         | Down (e,d) ->
-            let e_hbox = measureHBox e paint x y s                
+            let e_hbox = measureHBox e x y s                
             let mutable yd = e_hbox.ymin - fontsize / 3f
-            let d_hbox = measureHBox d paint x yd (0.8f * s)
+            let d_hbox = measureHBox d x yd (0.8f * s)
             typesetHBox d &x &yd paint canvas (0.8f * s) size
             x <- x + d_hbox.W
         | _ -> failwith $"{string expr} is not implemented yet"
@@ -266,19 +275,14 @@ module Typesetting =
             typesetHBox expr &x &y paint canvas s size
                            
         
+    
     let render (exprs:seq<Expr>) (stream:System.IO.Stream) =
-        use paint = new SKPaint(
-            Typeface = regular[0],
-            Color = SKColors.Black,
-            IsAntialias = true,
-            TextSize = fontsize,
-            StrokeWidth = 1.3f
-        )
-        let hbox = measure exprs paint 0f 0f 1f
+        let hbox = measure exprs 0f 0f 1f
         let size = hbox.Size
         let info = new SKImageInfo(int size.w, 124 + int size.h)
         use surface = SKSurface.Create(info)
         use canvas = surface.Canvas
+        canvas.Clear(SKColors.White)
         typeset exprs paint canvas 1f size
         use image = surface.Snapshot()
         use data = image.Encode(SKEncodedImageFormat.Png, 80)

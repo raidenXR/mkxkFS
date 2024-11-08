@@ -261,6 +261,10 @@ type Parser(src:string) =
         exprs
 
 
+
+    static member parseExprs (src:string) =
+        let parser = Parser(src)
+        parser.exprs()
     // member _.createAST () = 
     //     for token in tokens do expressions.Add (parseExpr(expressions))
     //     let root = parseExpr (expressions)

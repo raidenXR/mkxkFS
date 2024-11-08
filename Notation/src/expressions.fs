@@ -4,7 +4,6 @@ open System.Text
 
 [<Struct>]
 type TokenId =
-    | None
     | WhiteSpace
     | Ord
     | Op

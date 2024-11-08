@@ -1,25 +1,19 @@
 #r "../bin/Debug/net8.0/Notation.dll"
-#r "nuget: SkiaSharp, 2.88.6"
-// #load "../src/expressions.fs"
-// #load "../src/parsing.fs"
-#load "../../MKXK/src/serializers.fs"
 
 open System
 open System.IO
 open System.Diagnostics
 open NotationFS
-open SkiaSharp
-open MKXK
 
 let functions = [
-    // "g(x) = \\int_a^b \\frac{1}{2} x^2 dx"
-    // "f(x) = 4.3 \\cdot x^{3A_z} \\cdot \\Gamma - N_A + \\frac{A + D}{B - G} + (A - B_{\\gamma})"
+    "g(x) = \\int_a^b \\frac{1}{2} x^2 dx"
+    "f(x) = 4.3 \\cdot x^{3A_z} \\cdot \\Gamma - N_A + \\frac{A + D}{B - G} + (A - B_{\\gamma})"
     "f(x) = \\int _a ^b \\frac{(A + B - 94.3)}{e^{-RT} \\cdot 9.43 x} dx"
-    // "f(x) = \\int _a ^b \\frac{(A + B - 94.3)}{e^{-RT \\cdot \\frac{K_l}{N_t}} \\cdot 9.43 x} dx"
-    // "\\frac{(A-B)}{(e^{-RT})} + \\frac{1}{2}"
-    // "f(x) = (A_n + B_{n + 1}) - \\frac{1}{2} x^2 \\cdot \\gamma"
-    // "g(x) = E^{-RT} + 4.213 T - 6.422 T - \\gamma^{-2}"
-    // "z(x) = 3.2343 e^{-1.2} + 8.5"
+    "f(x) = \\int _a ^b \\frac{(A + B - 94.3)}{e^{-RT \\cdot \\frac{K_l}{N_t}} \\cdot 9.43 x} dx"
+    "\\frac{(A-B)}{(e^{-RT})} + \\frac{1}{2}"
+    "f(x) = (A_n + B_{n + 1}) - \\frac{1}{2} x^2 \\cdot \\gamma"
+    "g(x) = E^{-RT} + 4.213 T - 6.422 T - \\gamma^{-2}"
+    "z(x) = 3.2343 e^{-1.2} + 8.5"
     "a(x) = \\frac{Z - 9.2 + A^2}{e^{0.8}} + \\frac{x^2 + 2 * x + 1}{x^3 - 1}"
     @"f(x) = \frac{R_{\epsilon} + A_1 - -\frac{\frac{C_{\gamma}}{C_B}}{C_C + \frac{(C_{\alpha}) + C_{\alpha}}{C_a}} - R_{\epsilon}}{C_{\beta} - 3.738} / (A_e)"
     @"f(x) = \frac{\frac{1}{2}}{e + \frac{A}{\frac{(e + 2)}{G - \gamma}}}"
@@ -31,11 +25,6 @@ let functions = [
     @"(x) = C_A \cdot \frac{R}{\frac{g(x)}{(\log{99,767.598})} * C_{AB} / \frac{N_A}{\frac{-z(x)}{A_0 \cdot 53,250.203}}} / (1,504.787)"
 ]
 
-let html = Html.HtmlBuilder()
-html
-|> Html.header 2 "functions"
-|> Html.olist (List.map (fun f -> $"${f}$") functions)
-|> Html.close "functions.html"
 
 // check lexer is working
 // for str in functions do
@@ -53,30 +42,12 @@ let mutable i = 1
 
 for str in functions do
     Console.WriteLine("{0}. {1}", i, str)
-    let parser = Parser(str)
-    let exprs = parser.exprs()
+    let exprs = Parser.parseExprs str
     // Typesetting.printExprs exprs ""
-    use paint = new SKPaint(
-        Color = SKColors.Black,
-        IsAntialias = true,
-        TextSize = 16f,
-        StrokeWidth = 1.0f
-        )
 
     // Typesetting.measureWithPrint exprs paint 0f 0f 1f
     
-    let hbox = Typesetting.measure exprs paint 0.f 0.f 1.0f
+    let hbox = Typesetting.measure exprs 0.f 0.f 1.0f
     let size = hbox.Size
     printfn "%A,  %A" hbox size
-    use fs = File.Create($"notation_images/fn{i}.png")
-    Typesetting.render exprs fs
-    i <- i + 1
-    fs.Flush()
-    fs.Close()
     
-// let [<Literal>] dir_name = "notation_images"
-// Directory.CreateDirectory dir_name |> ignore
-
-// let ms = new MemoryStream(8 * 1024)
-// let dt0 = Stopwatch.GetTimestamp()
-// let mutable i = 0
