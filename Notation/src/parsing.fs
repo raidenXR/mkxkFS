@@ -176,7 +176,7 @@ type Parser(src:string) =
         if (current()).Id = kind then nextToken () else Token(pos, (current()).Str, kind)
 
 
-    let rec parseExpr () :Expr =
+    let rec parseExpr (expressions:List<Expr>) :Expr =
         let token = nextToken()        
         match token.Id with
         | TokenId.Number -> Number (token.Str)
@@ -197,8 +197,8 @@ type Parser(src:string) =
             // e
         | TokenId.Binary -> 
             // let c = nextToken()
-            let l = parseExpr()
-            let r = parseExpr()
+            let l = parseExpr(expressions)
+            let r = parseExpr(expressions)
             Binary (token.Str, l, r)
             // let e = Binary(token.Str,l,r)
             // exprs.Add e
@@ -206,7 +206,7 @@ type Parser(src:string) =
         | TokenId.GroupedOpen ->                
             let exprs = List<Expr>()
             while current().Id <> TokenId.GroupedClose && current().Id <> TokenId.Eof do
-                exprs.Add (parseExpr())
+                exprs.Add (parseExpr(exprs))
             ignore (nextToken())
             Grouped (exprs)
             // ignore (nextToken())    // ignore {
@@ -227,8 +227,8 @@ type Parser(src:string) =
             // exprs.Add e
             // e
         | TokenId.Up ->
-            let n = parseExpr()
-            Up (ExprNone, n)
+            let n = parseExpr(expressions)
+            Up (expressions.Last(), n)
             // ignore (nextToken())    // ignore ^
             // let b = exprs.Last()
             // let b = ExprNone
@@ -237,8 +237,8 @@ type Parser(src:string) =
             // exprs.Add e
             // e                
         | TokenId.Down -> 
-            let n = parseExpr()
-            Down (ExprNone, n)
+            let n = parseExpr(expressions)
+            Down (expressions.Last(), n)
             // ignore (nextToken())   // ignore _
             // let b = exprs.Last()
             // let b = ExprNone
@@ -257,7 +257,7 @@ type Parser(src:string) =
         // WARNING: if called multiple time, it will append to same sxpressions List<Expr>
         // ##################################################################                
         let exprs = List<Expr>(20)
-        while pos < tokens.Count do exprs.Add(parseExpr())
+        while pos < tokens.Count do exprs.Add(parseExpr(exprs))
         exprs
 
 

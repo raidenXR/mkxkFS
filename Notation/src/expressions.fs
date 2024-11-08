@@ -333,6 +333,7 @@ module Notation =
         "\\cup", Symbol (Bin, "\u222A")
         "\\sqcap", Symbol (Bin, "\u2293")
         "\\sqcup", Symbol (Bin, "\u2294")
+        "\\sqrt", Symbol (Bin, "\u221A")
         "\\uplus", Symbol (Bin, "\u228E")
         "\\amalg", Symbol (Bin, "\u2210")
         "\\bigtriangleup", Symbol (Bin, "\u25B3")

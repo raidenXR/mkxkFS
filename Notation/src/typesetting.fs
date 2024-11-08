@@ -65,10 +65,36 @@ module Typesetting =
         ymax: float32
     }
 
-    let inline transform x y (size:Rect) :SKPoint =
-        let xt = abs size.x + x
-        let yt = size.h - size.y - y
-        SKPoint(xt, yt) 
+    [<Struct>]
+    type HBox = {
+        xmin: float32
+        xmax: float32
+        ymin: float32
+        ymax: float32
+    }
+    with
+        member r.W = abs (r.xmax - r.xmin)
+
+        member r.H = abs (r.ymax - r.ymin)
+
+        member r.Size = {w = abs (r.xmax - r.xmin); h = abs (r.ymax - r.ymin)}
+
+        static member (+) (a:HBox, b:HBox) = {
+                xmin = min a.xmin b.xmin 
+                xmax = max a.xmax b.xmax
+                ymin = min a.ymin b.ymin
+                ymax = max a.ymax b.ymax
+            }
+
+    // let inline transform x y (size:Rect) :SKPoint =
+    //     let xt = abs size.x + x
+    //     let yt = size.h - size.y - y
+    //     SKPoint(xt, yt) 
+    
+    let inline transform x y (size:Size) :SKPoint =
+        let xt = x
+        let yt = size.h - y
+        SKPoint(xt, yt)
     
     // let rec printatom n padding (size:Vector4) =
     //     let pt = transform x y size
@@ -96,61 +122,67 @@ module Typesetting =
             | Down (e,d) ->
                 printExprs [d] (indent + "--")
             | _ -> failwith $"(string expr) not implemented yet"
-            
 
-    let rec measure (exprs:seq<Expr>) (paint:SKPaint) x y s :Rect =
-        let mutable w = 0.f
-        let mutable h = fontsize * s
-        let mutable ymin = y
-        let mutable ymax = y
+
+    let rec measureHBox (expr:Expr) (paint:SKPaint) x y s :HBox = 
+        match expr with
+        | Number n ->
+            paint.Typeface <- regular[1]
+            {xmin = x; xmax = x + s * paint.MeasureText n; ymin = y; ymax = y + fontsize * s}
+        | Identifier i ->
+            paint.Typeface <- italic[0]
+            {xmin = x; xmax = x + s * paint.MeasureText i; ymin = y; ymax = y + fontsize * s}
+        | MathOperator o ->
+            paint.Typeface <- italic[1]
+            {xmin = x; xmax = x + s * paint.MeasureText o; ymin = y; ymax = y + fontsize * s}
+        | Symbol (t,n) ->
+            paint.Typeface <- regular[1]
+            {xmin = x; xmax = x + s * paint.MeasureText n; ymin = y; ymax = y + fontsize * s}
+        | Binary (n,l,r) ->
+            let s = 0.95f * s
+            let y_line = y + s * fontsize / 2f
+            let y_lhs = y_line + s * fontsize
+            let y_rhs = y_line - s * fontsize
+            let lhs = measureHBox l paint x y_lhs s
+            let rhs = measureHBox r paint x y_rhs s
+            // let y_upper = y_lhs + if lhs.ymin < y_line then abs (lhs.ymin - y_line) else 0f
+            // let y_lower = y_rhs + if rhs.ymax > y_line then - abs (rhs.ymax - y_line) else 0f
+            // let lhs' = measureHBox l paint x y_upper s
+            // let rhs' = measureHBox l paint x y_lower s
+            // lhs' + rhs'       
+            lhs + rhs
+        | Grouped group ->
+            let mutable hbox = {xmin = x; xmax = x; ymin = y; ymax = y}
+            for g in group do
+                hbox <- hbox + measureHBox g paint hbox.xmax y s 
+            hbox
+        | Up (e,u) ->
+            let e_hbox = measureHBox e paint x y s
+            let yu = e_hbox.ymax - fontsize  / 2f
+            measureHBox u paint x yu (0.8f * s)
+        | Down (e,d) ->
+            let e_hbox = measureHBox e paint x y s                
+            let yd = e_hbox.ymin - fontsize / 3f
+            measureHBox d paint x yd (0.8f * s)
+        | _ -> failwith $"{string expr} is not implemented"
+
+
+    let rec measure (exprs:seq<Expr>) (paint:SKPaint) x y s :HBox =
+        let mutable hbox = {xmin = x; xmax = x; ymin = y; ymax = y}
         for expr in exprs do
-            match expr with
-            | Number n -> 
-                paint.Typeface <- regular[1]
-                w <- w + paint.MeasureText(n) * s
-                h <- max h (y + (paint.TextSize * s))
-            | Identifier i ->
-                paint.Typeface <- italic[0]
-                w <- w + paint.MeasureText(i) * s
-                h <- max h (y + (paint.TextSize * s))
-            | MathOperator o ->
-                paint.Typeface <- italic[1]
-                w <- w + paint.MeasureText(o) * s
-                h <- max h (y + (paint.TextSize * s))
-            | Symbol (t,n) -> 
-                paint.Typeface <- regular[1]
-                w <- w + paint.MeasureText(n) * s
-                h <- max h (y + (paint.TextSize * s))
-            | Binary (n,l,r) ->
-                let ls = measure [l] paint x y s
-                let rs = measure [r] paint x y s
-                let bw = max ls.w rs.w
-                w <- w + bw
-                h <- max h (ls.y + ls.h + rs.y + rs.h)
-                ymax <- ls.ymax
-                ymin <- rs.ymin
-            | Grouped g ->
-                let gs = measure g paint x y s
-                w <- w + gs.w
-                h <- max h gs.h                
-            | Up (e,u) ->
-                let us = measure [u] paint x y (0.8f * s)
-                w <- w + us.w
-                ymax <- ymax + fontsize / 3f
-                h <- max h (ymax + 0.8f * s * fontsize)
-            | Down (e,d) -> 
-                let ls = measure [d] paint x y (0.8f * s)
-                w <- w + ls.w
-                ymin <- ymin - fontsize / 3f
-                h <- max h (ymin + 0.8f * fontsize)
-            | RightBrace -> w <- 8f 
-            | _ -> failwith $"{string expr} is not implemented"
-        paint.Typeface <- regular[1]
-        {x = x; y = y; w = w; h = h; ymin = ymin; ymax = ymax}
+            hbox <- hbox + measureHBox expr paint hbox.xmax y s
+        hbox        
+
+
+    let rec measureWithPrint (exprs:seq<Expr>) (paint:SKPaint) x y s :unit = 
+        let mutable hbox = {xmin = 0f; xmax = 0f; ymin = 0f; ymax = 0f}
+        for expr in exprs do
+            hbox <- hbox + measureHBox expr paint hbox.xmax y s
+            printfn "%s  xmin:%f, xmax:%f, ymin:%f, ynax:%f" (string expr) hbox.xmin hbox.xmax hbox.ymin hbox.ymax        
 
 
     /// draws t with appropriate Typeface    
-    let rec draw (typefaces:array<SKTypeface>) (t:string) x y s (paint:SKPaint) (canvas:SKCanvas) (r:Rect) =
+    let rec draw (typefaces:array<SKTypeface>) (t:string) x y s (paint:SKPaint) (canvas:SKCanvas) (r:Size) =
         let mutable break' = false
         let mutable i = 0
         match (typefaces |> Array.tryFind (fun x -> x.ContainsGlyphs t)) with
@@ -160,16 +192,6 @@ module Typesetting =
             let pt = transform x y r
             canvas.DrawText(t, pt, paint)
         | _ -> draw allfonts t x y s paint canvas r
-        // while i < typefaces.Length && not break' do
-        //     if typefaces[i].ContainsGlyphs(t) then
-        //         paint.Typeface <- typefaces[i]
-        //         paint.TextSize <- fontsize * s
-        //         let pt = transform x y r
-        //         canvas.DrawText(t, pt, paint)    
-        //         break' <- true
-        //     i <- i + 1
-        // if not break' then
-        //     draw allfonts t x y s paint canvas r
         paint.TextSize <- fontsize
 
 
@@ -177,54 +199,72 @@ module Typesetting =
 
     let dy (t:string) s (paint:SKPaint) = paint.TextSize * s
 
-    let rec typeset (exprs:seq<Expr>) x0 y0 (paint:SKPaint) (canvas:SKCanvas) (s:float32) (r:Rect) =
-        let mutable x = x0
-        let mutable y = y0
+    /// replace with typeset for singleHBox
+    let rec typesetHBox (expr:Expr) (x:byref<float32>) (y:byref<float32>) (paint:SKPaint) (canvas:SKCanvas) s size :unit =
+        match expr with
+        | Number n ->
+            let hbox = measureHBox expr paint x y s
+            draw regular n x y s paint canvas size
+            x <- x + hbox.W
+        | Identifier i ->
+            let hbox = measureHBox expr paint x y s
+            draw italic i x y s paint canvas size
+            x <- x + hbox.W
+        | MathOperator o ->
+            let hbox = measureHBox expr paint x y s
+            draw regular o x y s paint canvas size
+            x <- x + hbox.W
+        | Symbol (t,n) ->
+            let hbox = measureHBox expr paint x y s
+            draw italic n x y s paint canvas size
+            x <- x + hbox.W
+        | Binary (n,l,r) ->
+            let s = 0.95f * s
+            let y_line = y + s * fontsize / 2f
+            let y_lhs = y_line + s * fontsize
+            let y_rhs = y_line - s * fontsize
+            let lhs = measureHBox l paint x y_lhs s
+            let rhs = measureHBox r paint x y_rhs s
+            let width = max lhs.W rhs.W
+            let mutable x_lhs = if lhs.W > 0.9f * width then x else x + (width - lhs.W) / 2f
+            let mutable x_rhs = if rhs.W > 0.9f * width then x else x + (width - rhs.W) / 2f
+            let mutable y_upper = y_lhs + if lhs.ymin < y_line then abs (lhs.ymin - y_line) else 0f
+            let mutable y_lower = y_rhs + if rhs.ymax > y_line then - abs (rhs.ymax - y_line) else 0f
+            typesetHBox l &x_lhs &y_upper paint canvas s size
+            typesetHBox r &x_rhs &y_lower paint canvas s size
+            let pt0 = transform x y_line size
+            let pt1 = transform (x + width) y_line size
+            canvas.DrawLine(pt0, pt1, paint)
+            x <- x + width                
+        | Grouped group ->
+            // let g_hbox = measure group paint x y s
+            // let mutable x' = x
+            // let mutable y' = y
+            for g in group do
+                typesetHBox g &x &y paint canvas s size
+                // typesetHBox g &x' &y' paint canvas s size
+            // x <- x'
+        | Up (e,u) ->
+            let e_hbox = measureHBox e paint x y s
+            let mutable yu = e_hbox.ymax - fontsize  / 2f
+            let u_hbox = measureHBox u paint x yu (0.8f * s)
+            typesetHBox u &x &yu paint canvas (0.8f * s) size
+            x <- x + u_hbox.W
+        | Down (e,d) ->
+            let e_hbox = measureHBox e paint x y s                
+            let mutable yd = e_hbox.ymin - fontsize / 3f
+            let d_hbox = measureHBox d paint x yd (0.8f * s)
+            typesetHBox d &x &yd paint canvas (0.8f * s) size
+            x <- x + d_hbox.W
+        | _ -> failwith $"{string expr} is not implemented yet"
+
+
+    let rec typeset (exprs:seq<Expr>) (paint:SKPaint) (canvas:SKCanvas) s size :unit = 
+        let mutable x = 0f
+        let mutable y = 0f
         for expr in exprs do
-            match expr with
-            | Number n -> 
-                draw regular n x y s paint canvas r
-                x <- x + dx n s paint
-            | Identifier i ->
-                draw italic i x y s paint canvas r
-                x <- x + dx i s paint
-            | MathOperator o ->
-                draw regular o x y s paint canvas r
-                x <- x + dx o s paint
-            | Symbol (t,n) ->
-                draw regular n x y s paint canvas r
-                x <- x + dx n s paint
-            | Binary (n,lhs,rhs) ->
-                let us = measure [lhs] paint x y s 
-                let ls = measure [rhs] paint x y s
-                let lw = max us.w ls.w
-                let ux = if us.w > 0.9f * lw then x else x + (lw - us.w) / 2.f
-                let lx = if ls.w > 0.9f * lw then x else x + (lw - ls.w) / 2.f                
-                let uy = y + us.h / 2f
-                let ly = y - ls.h / 2f
-                typeset [lhs] ux uy paint canvas s r
-                typeset [rhs] lx ly paint canvas s r
-                let pt0 = transform x y r 
-                let pt1 = transform (x + lw) y r
-                canvas.DrawLine(pt0, pt1, paint)
-                x <- x + max us.w ls.w                
-            | Grouped g ->
-                let gs = measure g paint x y s
-                typeset g x y paint canvas s r
-                x <- x + gs.w
-            | Up (e,u) ->
-                let us = measure [u] paint x y (0.8f * s)
-                typeset [u] x (y + fontsize / 3f) paint canvas (0.8f * s) r
-                x <- x + us.w
-            | Down (e,d) ->
-                let ds = measure [d] paint x0 y0 (0.8f * s) 
-                typeset [d] x (y - fontsize / 3f) paint canvas (0.8f * s) r
-                x <- x + ds.w
-            | RightBrace ->
-                // draw regular "}" x y s paint canvas
-                x <- x + 8f
-            | _ -> failwith $"{string expr} is not implemented yet"
-            
+            typesetHBox expr &x &y paint canvas s size
+                           
         
     let render (exprs:seq<Expr>) (stream:System.IO.Stream) =
         use paint = new SKPaint(
@@ -234,11 +274,12 @@ module Typesetting =
             TextSize = fontsize,
             StrokeWidth = 1.3f
         )
-        let size = measure exprs paint 0f 0f 1f
-        let info = new SKImageInfo(int (size.w + 2f * 12f), int (size.h + 2f * 12f))
+        let hbox = measure exprs paint 0f 0f 1f
+        let size = hbox.Size
+        let info = new SKImageInfo(int size.w, 124 + int size.h)
         use surface = SKSurface.Create(info)
         use canvas = surface.Canvas
-        typeset exprs 0f 0f paint canvas 1f size
+        typeset exprs paint canvas 1f size
         use image = surface.Snapshot()
         use data = image.Encode(SKEncodedImageFormat.Png, 80)
         data.SaveTo(stream)

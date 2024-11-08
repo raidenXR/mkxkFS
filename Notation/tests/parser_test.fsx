@@ -2,13 +2,14 @@
 #r "nuget: SkiaSharp, 2.88.6"
 // #load "../src/expressions.fs"
 // #load "../src/parsing.fs"
-// #load "../src/typesetting.fs"
+#load "../../MKXK/src/serializers.fs"
 
 open System
 open System.IO
 open System.Diagnostics
 open NotationFS
 open SkiaSharp
+open MKXK
 
 let functions = [
     // "g(x) = \\int_a^b \\frac{1}{2} x^2 dx"
@@ -30,6 +31,11 @@ let functions = [
     @"(x) = C_A \cdot \frac{R}{\frac{g(x)}{(\log{99,767.598})} * C_{AB} / \frac{N_A}{\frac{-z(x)}{A_0 \cdot 53,250.203}}} / (1,504.787)"
 ]
 
+let html = Html.HtmlBuilder()
+html
+|> Html.header 2 "functions"
+|> Html.olist (List.map (fun f -> $"${f}$") functions)
+|> Html.close "functions.html"
 
 // check lexer is working
 // for str in functions do
@@ -43,12 +49,10 @@ let functions = [
 
 // check parser is working
 
-let mutable i = 0
-
-// Typesetting.WDTypefaces()
+let mutable i = 1
 
 for str in functions do
-    Console.WriteLine str
+    Console.WriteLine("{0}. {1}", i, str)
     let parser = Parser(str)
     let exprs = parser.exprs()
     // Typesetting.printExprs exprs ""
@@ -58,8 +62,12 @@ for str in functions do
         TextSize = 16f,
         StrokeWidth = 1.0f
         )
-    let size = Typesetting.measure exprs paint 0.f 0.f 1.0f
-    printfn "%A" size
+
+    // Typesetting.measureWithPrint exprs paint 0f 0f 1f
+    
+    let hbox = Typesetting.measure exprs paint 0.f 0.f 1.0f
+    let size = hbox.Size
+    printfn "%A,  %A" hbox size
     use fs = File.Create($"notation_images/fn{i}.png")
     Typesetting.render exprs fs
     i <- i + 1
