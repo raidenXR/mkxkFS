@@ -87,9 +87,7 @@ let parallel_opt = (Mutation.optimizefn desc N 0.1 1e3 "C_A") >> cout
     
 printfn "rng-fn generation #time"
 #time
-let pipe0 =
-    // Array.Parallel.init L (fun _ -> FnGeneration.generatefnEXT "f(x)" maps 0.01 1e5 20)
-    Array.Parallel.init L (fun _ -> FnGeneration.generatefnEXT "f(x)" s' TokenIdProbs.Default 0.01 1e5 20)
+let pipe0 = Array.Parallel.init L (fun _ -> FnGeneration.generatefnEXT "f(x)" s' TokenIdProbs.Default 0.01 1e5 40)
 #time
 
 printfn "\nrng-fn optimization #time"
@@ -103,36 +101,31 @@ let (fns_optimized, errs) =
     |> Array.unzip
 #time
 
+
 // keep a log of generated fns and their errors
 let html = Html.HtmlBuilder()
 html
+|> Html.header 2 "constants"
+|> Html.table None ["name"; "value"] [] ([for p in cons -> [$"${p.Key}$"; (string p.Value)]])
+|> Html.header 2 "variables"
+|> Html.table None ["name"; "min"; "max"] [] ([for p in vars -> [$"${p.Key}$"; (string p.Value.A); (string p.Value.B)]])
+|> Html.header 2 "functions"
+|> Html.ulist (List.map (fun x -> $"${x}$") [f0str; f1str; f6str])
 |> Html.header 2 "rng functions"
 |> Html.olist (Array.map2 (fun x y -> $"${x}$      err:{y:N6}") fns_optimized errs)
 |> Html.close "functions.html"
 
 
 let models = [
-    Model2.createpoints x y Colors.Navy 4.2f
-    Model2.createpoints x z Colors.Purple 4.2f
-    Model2.createTeXModel maps fns_optimized[0] "C_A" Colors.Green 2.0f
-    Model2.createTeXModel maps fns_optimized[1] "C_A" Colors.Red 2.0f
-    Model2.createTeXModel maps fns_optimized[2] "C_A" Colors.Blue 2.0f
-    Model2.createTeXModel maps fns_optimized[3] "C_A" Colors.Brown 2.0f
-    Model2.createTeXModel maps fns_optimized[4] "C_A" Colors.Silver 2.0f
+    "rp0", Model2.createpoints x y Colors.Navy 4.2f
+    "rp1", Model2.createpoints x z Colors.Purple 4.2f
+    "f1(x)", Model2.createTeXModel maps fns_optimized[0] "C_A" Colors.Green 2.0f
+    "f2(x)", Model2.createTeXModel maps fns_optimized[1] "C_A" Colors.Red 2.0f
+    "f3(x)", Model2.createTeXModel maps fns_optimized[2] "C_A" Colors.Blue 2.0f
+    "f4(x)", Model2.createTeXModel maps fns_optimized[3] "C_A" Colors.Brown 2.0f
+    "f5(x)", Model2.createTeXModel maps fns_optimized[4] "C_A" Colors.Silver 2.0f
 ]
 
-let names = [
-    "rp0"
-    "rp1"
-    "f1(x)"
-    "f2(x)"
-    "f3(x)"
-    "f4(x)"
-    "f5(x)"  
-]
-
-Model2.setNames names models
- 
 
 let renderer = Renderer(maps, models)
 renderer.Run()

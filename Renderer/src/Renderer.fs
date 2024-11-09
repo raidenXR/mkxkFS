@@ -51,6 +51,11 @@ type Renderer(maps:Maps, models:list<Model2.Model>) =
     member x.Close() =
         wnd.Close()
 
+    new(maps:Maps, models:list<string*Model2.Model>) =
+        let (names,models) = List.unzip models
+        Model2.setNames names models
+        Renderer(maps,models)
+
 
 type GenericRenderer() =
     let mutable wnd: Window = null

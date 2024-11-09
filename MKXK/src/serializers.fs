@@ -203,25 +203,21 @@ module Html =
 
     let code s (html:HtmlBuilder) = html.writeln $"<br><code>\n{s}\n</code><br>\n" 
 
-    let table (caption: option<string>) (header: option<seq<string>>) (footer: option<seq<string>>) (content: list<list<'T>>) (html:HtmlBuilder) =
+    let table (caption: option<string>) (header: seq<string>) (footer: seq<string>) (content: list<list<'T>>) (html:HtmlBuilder) =
         html.writeln_ignore "\n<br>\n<table>"
 
         match caption with
         | Some s -> html.writeln_ignore $"  <caption>{s}</caption>"
         | None -> ()
 
-        match header with
-        | Some h ->
+        if (Seq.length header) > 0 then
             html.writeln_ignore "<thead>\n  <tr>"
-            h |> Seq.iter (fun hi -> html.writeln_ignore $"<th>{hi}</th>")
+            Seq.iter (fun hi -> html.writeln_ignore $"<th>{hi}</th>") header
             html.writeln_ignore "</tr>\n<thead>"
-        | None -> ()
 
-        match footer with
-        | Some f ->
+        if (Seq.length footer) > 0 then
             html.writeln_ignore "<tfoot>\n  <tr>"
-            f |> Seq.iter (fun fi -> html.writeln_ignore $"<th>{fi}</th>")
-        | None -> ()
+            Seq.iter (fun fi -> html.writeln_ignore $"<th>{fi}</th>") footer
 
         html.writeln_ignore "<tbody>"
         for line in content do

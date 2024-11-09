@@ -33,7 +33,7 @@ html
 |> header 4 "latex function"
 |> latexfunctionln "f(x) = A \\cdot b"
 |> header 5 "table example"
-|> table (Some "omg caption!!!") (Some h) (Some t) tt
+|> table (Some "omg caption!!!") h t tt
 |> header 3 "image display"
 |> image "images/image3.png"
 |> close "tests_output/html.html"
