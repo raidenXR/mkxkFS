@@ -25,18 +25,22 @@ module Converter =
 
     let convert (tex:string) = 
         ms.Position <- 0
-        let parser = Parser(tex)
-        let exprs = parser.exprs()
-        Typesetting.render exprs ms               
+        let exprs = Parser.parseExprs tex
+        NotationFS2.Typesetting.render ms exprs           
         ms.Position <- 0
         new Avalonia.Media.Imaging.Bitmap(ms)
 
+    let convertSymbol (tex:string) = 
+        ms.Position <- 0
+        let exprs = Parser.parseExprs tex
+        NotationFS2.Typesetting.renderAlpha ms exprs           
+        ms.Position <- 0
+        new Avalonia.Media.Imaging.Bitmap(ms)
 
     let image (tex:string) =
         ms.Position <- 0
-        let parser = Parser(tex)
-        let exprs = parser.exprs()
-        Typesetting.render exprs ms
+        let exprs = Parser.parseExprs tex
+        NotationFS2.Typesetting.render ms exprs           
         ms.Position <- 0
         SKImage.FromEncodedData(ms)
 
@@ -166,7 +170,7 @@ module Views =
                         Image.column 0
                         Image.stretch Media.Stretch.None
                         Image.horizontalAlignment HorizontalAlignment.Left
-                        Image.source (Converter.convert s)
+                        Image.source (Converter.convertSymbol s)
                     ]
 
                     Slider.create [
@@ -270,7 +274,7 @@ module Views =
                                                 Image.create [
                                                     Image.stretch Media.Stretch.None 
                                                     Image.column 0
-                                                    Image.source (Converter.convert s)
+                                                    Image.source (Converter.convertSymbol s)
                                                 ]
                                                 TextBlock.create [
                                                     TextBlock.column 1
@@ -297,7 +301,7 @@ module Views =
                                                 Image.create [
                                                     Image.stretch Media.Stretch.None 
                                                     Image.column 0
-                                                    Image.source (Converter.convert s)
+                                                    Image.source (Converter.convertSymbol s)
                                                 ]
                                                 TextBlock.create [
                                                     TextBlock.column 1
@@ -326,7 +330,7 @@ module Views =
                                         | Binder.Assignment (l ,r) ->
                                             Image.create [
                                                 Image.stretch Media.Stretch.None 
-                                                Image.source (Converter.convert l)
+                                                Image.source (Converter.convertSymbol l)
                                             ] 
                                         | _ -> Image.create []
                                     )
@@ -342,7 +346,7 @@ module Views =
                                     DataTemplateView<string * Variable>.create (fun (s,v) ->
                                         Image.create [
                                             Image.stretch Media.Stretch.None 
-                                            Image.source (Converter.convert s)
+                                            Image.source (Converter.convertSymbol s)
                                         ]        
                                     )
                                 )

@@ -51,6 +51,8 @@ module Typesetting =
         member r.xmax = r.pos.X + r.size.w
         member r.ymax = r.pos.Y + r.size.h
 
+    type [<Struct>] HBox2 = {dy1:float32; dy2:float32}
+
     
     let inline private transform x y (size:Size) = SKPoint(x, size.h - y)
     
@@ -154,7 +156,7 @@ module Typesetting =
                 h <- max h s.h
             {w = w; h = h}
 
-        [<Obsolete>]
+        // [<Obsolete>]
         let rec hbox (expr:Expr) x y s :HBox =
             match expr with 
             | Number n -> 
@@ -192,10 +194,48 @@ module Typesetting =
                 for g in group do
                     let gbox = hbox g w y s
                     w <- w + gbox.size.w
-                {pos = Vector2(x, y); size = {w = w; h = y}; s = s}
-                    
+                {pos = Vector2(x, y); size = {w = w; h = y}; s = s}                    
             | _ -> failwith $"{string expr} is not implemented yet"
 
+
+        let rec hbox2 (expr:Expr) s :HBox2 =
+            match expr with
+            | Number _ 
+            | Identifier _ 
+            | MathOperator _ 
+            | Symbol _ -> {dy1 = 0f; dy2 = 0f}
+            | Binary (n,l,r) ->
+                // let lhs_hbox = hbox2 l s
+                // let rhs_hbox = hbox2 r s                
+                let lhs_size = size l s
+                let rhs_size = size r s
+                {dy1 = lhs_size.h; dy2 = -rhs_size.h}
+            | Grouped group ->
+                let mutable dy1 = 0f
+                let mutable dy2 = 0f
+                for g in group do
+                    let hb = hbox2 g s
+                    dy1 <- max dy1 hb.dy1
+                    dy2 <- min dy2 hb.dy2
+                {dy1 = dy1; dy2 = -dy2}
+            | Up (e,u) ->
+                let u_size = size u (0.8f * s)
+                {dy1 = u_size.h * 0.3f; dy2 = 0f}
+            | Down (e,d) ->
+                let d_size = size d (0.8f * s)
+                {dy1 = 0f; dy2 = -d_size.h * 0.3f}
+            | _ -> failwith $"{string expr} is not implemented yet"                    
+
+
+        let totalHbox2 (exprs:seq<Expr>) :HBox2 =
+            let mutable dy1 = 0f
+            let mutable dy2 = 0f
+            for expr in exprs do
+                let hb = hbox2 expr 1f            
+                dy1 <- max dy1 hb.dy1
+                dy2 <- min dy2 hb.dy2
+            {dy1 = dy1; dy2 = dy2}
+                
 
     /// draws str with appropriate Typeface    
     let draw (fonts:array<SKTypeface>) (str:string) x y s (canvas:SKCanvas) (r:Size) =
@@ -218,7 +258,7 @@ module Typesetting =
             draw regular n pt.X pt.Y s canvas r
             pt.X <- pt.X + s * Measure.width n
         | Symbol (t,n) ->
-            draw italic n pt.X pt.Y s canvas r
+            draw regular n pt.X pt.Y s canvas r
             pt.X <- pt.X + s * Measure.width n
         | Binary (n,lhs,rhs) ->
             let s = 0.95f * s
@@ -229,34 +269,36 @@ module Typesetting =
             let x0 = if lhs_size.w > 0.9f * w then pt.X else pt.X + (w - lhs_size.w) / 2f
             let x1 = if rhs_size.w > 0.9f * w then pt.X else pt.X + (w - rhs_size.w) / 2f
 
-            let y0 = pt.Y + s * 1.5f * fontsize
-            let y1 = pt.Y - s * 1.5f * fontsize
+            let lhs_hbox = Measure.hbox2 lhs s
+            let rhs_hbox = Measure.hbox2 rhs s
             let y_line = pt.Y + 0.5f * fontsize
-            // let y_line = y1 + (y0 - y1) / 2f
+            let y0 = y_line + abs (lhs_hbox.dy2)
+            let y1 = y_line - s * fontsize - abs (rhs_hbox.dy1)
 
             let mutable pt0 = Vector2(x0, y0)
             let mutable pt1 = Vector2(x1, y1)
+            canvas.DrawLine((transform pt.X y_line r), (transform (pt.X + w) y_line r), paint)
             typeset lhs &pt0 s canvas r
             typeset rhs &pt1 s canvas r
-            canvas.DrawLine((transform pt.X y_line r), (transform (pt.X + w) y_line r), paint)
+            pt.X <- pt.X + w
         | Grouped group ->
-            let mutable pt0 = Vector2(pt.X, pt.Y)
+            // let mutable pt0 = Vector2(pt.X, pt.Y)
             let gsize = Measure.totalSize group
             for g in group do
                 let g_size = Measure.size g s
-                typeset g &pt0 s canvas r
-                pt0.X <- pt0.X + g_size.w           
-            pt.X <- pt.X + gsize.w
+                typeset g &pt s canvas r
+                // pt.X <- pt.X + g_size.w           
+            // pt.X <- pt.X + gsize.w
         | Up (e,u) ->
             let e_size = Measure.size e s
             let u_size = Measure.size u (0.8f * s)
-            let mutable pt0 = Vector2(pt.X, pt.Y + 0.8f * e_size.h)
+            let mutable pt0 = Vector2(pt.X, pt.Y + 0.6f * e_size.h)
             typeset u &pt0 (0.8f * s) canvas r  
             pt.X <- pt.X + u_size.w
         | Down (e,d) ->
             let e_size = Measure.size e s
             let d_size = Measure.size d (0.8f * s)
-            let mutable pt0 = Vector2(pt.X, pt.Y + e_size.h - 0.8f * e_size.h)
+            let mutable pt0 = Vector2(pt.X, pt.Y - 0.3f * d_size.h)
             typeset d &pt0 (0.8f * s) canvas r  
             pt.X <- pt.X + d_size.w
         | _ -> failwith $"{string expr} is not implemented yet"
@@ -264,14 +306,34 @@ module Typesetting =
         
     let render (stream:System.IO.Stream) (exprs:seq<Expr>) =
         let total_size = Measure.totalSize exprs
+        let total_hbox = Measure.totalHbox2 exprs
         let w = int (total_size.w + 2f * fontsize)
         let h = int (total_size.h + 2f * fontsize)
         let info = new SKImageInfo(w, h)
-        let mutable pos = Vector2.Zero
 
         use surface = SKSurface.Create(info)
         use canvas = surface.Canvas
         canvas.Clear(SKColors.White)
+
+        let mutable pos = Vector2(fontsize, abs (total_hbox.dy2) - fontsize)
+        for expr in exprs do
+            typeset expr &pos 1f canvas total_size
+        use image = surface.Snapshot()
+        use data = image.Encode(SKEncodedImageFormat.Png, 80)
+        data.SaveTo(stream)
+
+    /// renders image with transparent background and no margin
+    let renderAlpha (stream:System.IO.Stream) (exprs:seq<Expr>) =
+        let total_size = Measure.totalSize exprs
+        let total_hbox = Measure.totalHbox2 exprs
+        let w = int (total_size.w + fontsize)
+        let h = int (total_size.h + fontsize)
+        let info = new SKImageInfo(w, h)
+
+        use surface = SKSurface.Create(info)
+        use canvas = surface.Canvas
+
+        let mutable pos = Vector2(0f, 0f)
         for expr in exprs do
             typeset expr &pos 1f canvas total_size
         use image = surface.Snapshot()

@@ -73,13 +73,13 @@ let desc: Mutation.OptimizationDesc = {
 let mutable counter = 1
 let [<Literal>] N = 400 // optimization loop
 let [<Literal>] L = 1600 // no of rng fns
+let struct(ci,cj) = Console.GetCursorPosition()
 
 let cout (pair:Expr * float) =
     if counter % 100 = 0 then
-        let struct(ci,cj) = Console.GetCursorPosition()
         let p = 100. * (float counter / float L)
         Console.WriteLine ($"fn optimized: {p:N2}" + "%")
-        Console.SetCursorPosition(0,cj)
+        Console.SetCursorPosition(0,cj + 5)
     counter <- counter + 1
     pair
 
