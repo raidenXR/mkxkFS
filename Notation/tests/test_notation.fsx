@@ -33,21 +33,15 @@ html
 |> Html.olist (List.map (fun f -> $"${f}$") functions)
 |> Html.close "functions.html"
 
+
+let mutable i = 1
 let [<Literal>] dir_name = "notation_images"
 Directory.CreateDirectory dir_name |> ignore
 
-let mutable i = 1
-
-for str in functions do
-    Console.WriteLine("{0}. {1}", i, str)
-    let parser = Parser(str)
-    let exprs = parser.exprs()
-    
-    let hbox = Typesetting.measure exprs 0.f 0.f 1.0f
-    let size = hbox.Size
-    printfn "%A,  %A" hbox size
+for fn in (List.map NotationFS.Parser.parseExprs functions) do    
+    let hbox = Typesetting.Measure.totalSize fn 
     use fs = File.Create($"notation_images/fn{i}.png")
-    Typesetting.render exprs fs
+    Typesetting.render fs fn
     i <- i + 1
     fs.Flush()
     fs.Close()

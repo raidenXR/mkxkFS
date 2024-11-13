@@ -47,7 +47,7 @@ for str in functions do
 
     // Typesetting.measureWithPrint exprs paint 0f 0f 1f
     
-    let hbox = Typesetting.measure exprs 0.f 0.f 1.0f
-    let size = hbox.Size
+    let hbox = Typesetting.Measure.totalHbox exprs
+    let size = Typesetting.Measure.totalSize exprs
     printfn "%A,  %A" hbox size
     

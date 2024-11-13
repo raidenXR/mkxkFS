@@ -190,7 +190,7 @@ module Views =
             ]
         )
 
-    let FunctionLine 
+    let ComponentFnNotation 
         (i:int)
         (s:string)
         (notation:IReadable<bool>) =
@@ -421,47 +421,7 @@ module Views =
                                 ListBox.column 1
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems [for (i,s) in tex_strs_i -> FunctionLine i s notation]
-                                // match not notation.Current with
-                                // | true ->
-                                //     ListBox.dataItems ((Array.map (fun (tex, _, _, _) -> tex) tex_models) |> Array.indexed)
-                                //     ListBox.itemTemplate (
-                                //         DataTemplateView<int * string>.create(fun (i, s) ->
-                                //             StackPanel.create [
-                                //                 StackPanel.orientation Orientation.Horizontal
-                                //                 StackPanel.children [
-                                //                     TextBlock.create [
-                                //                         TextBlock.width 40
-                                //                         TextBlock.verticalAlignment VerticalAlignment.Center
-                                //                         TextBlock.text (string (i + 1) + ": ")
-                                //                     ]
-                                //                     Image.create [
-                                //                         Image.stretch Media.Stretch.None
-                                //                         Image.source (Converter.convert s)
-                                //                     ]
-                                //                 ]
-                                //             ]
-                                //         )
-                                //     )
-                                // | false ->
-                                //     ListBox.dataItems ((Array.map (fun (tex, _, _, _) -> tex) tex_models) |> Array.indexed)
-                                //     ListBox.itemTemplate (
-                                //         DataTemplateView<int * string>.create(fun (i, s) ->
-                                //             StackPanel.create [
-                                //                 StackPanel.orientation Orientation.Horizontal
-                                //                 StackPanel.children [
-                                //                     TextBlock.create [
-                                //                         TextBlock.width 40
-                                //                         TextBlock.verticalAlignment VerticalAlignment.Center
-                                //                         TextBlock.text (string (i + 1) + ": ")
-                                //                     ]                                                    
-                                //                     SelectableTextBlock.create [
-                                //                         SelectableTextBlock.text s
-                                //                     ]    
-                                //                 ]
-                                //             ]
-                                //         )
-                                //     )                                
+                                ListBox.dataItems [for (i,s) in tex_strs_i -> ComponentFnNotation i s notation]
                             ]
                         ]
                     ]
