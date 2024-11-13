@@ -9,7 +9,6 @@
     <Compile Include="src/expressions.fs" />
     <Compile Include="src/parsing.fs" />
     <Compile Include="src/typesetting.fs" />
-    <Compile Include="src/typesetting2.fs" />
   </ItemGroup>
 
   <ItemGroup>

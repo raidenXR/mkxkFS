@@ -87,7 +87,8 @@ let parallel_opt = (Mutation.optimizefn desc N 0.1 1e3 "C_A") >> cout
     
 printfn "rng-fn generation #time"
 #time
-let pipe0 = Array.Parallel.init L (fun _ -> FnGeneration.generatefnEXT "f(x)" s' TokenIdProbs.Default 0.01 1e5 40)
+let probs = {TokenIdProbs.Default with Pfunction = 15; Pnumber = 5}
+let pipe0 = Array.Parallel.init L (fun _ -> FnGeneration.generatefnEXT "f(x)" s' probs 0.01 1e5 40)
 #time
 
 printfn "\nrng-fn optimization #time"
@@ -96,7 +97,7 @@ let (fns_optimized, errs) =
     pipe0
     |> Array.Parallel.map parallel_opt
     |> Array.sortBy (fun (f,err) -> err)
-    |> Array.take 10
+    |> Array.takeWhile (fun (f,err) -> err < 3)
     |> Array.map (fun (x,y) -> latex x, y)
     |> Array.unzip
 #time
@@ -112,7 +113,10 @@ html
 |> Html.header 2 "functions"
 |> Html.ulist (List.map (fun x -> $"${x}$") [f0str; f1str; f6str])
 |> Html.header 2 "rng functions"
-|> Html.olist (Array.map2 (fun x y -> $"${x}$      err:{y:N6}") fns_optimized errs)
+|> Html.olist (Array.map2 (fun x y -> $"${x}$      err:{y:N6}") fns_optimized[0..9] errs[0..9])
+|> Html.line ""
+|> Html.line ""
+|> Html.olisti 11 (Array.map2 (fun x y -> $"${x}$      err:{y:N6}") fns_optimized[10..] errs[10..])
 |> Html.close "functions.html"
 
 

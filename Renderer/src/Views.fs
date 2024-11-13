@@ -26,21 +26,21 @@ module Converter =
     let convert (tex:string) = 
         ms.Position <- 0
         let exprs = Parser.parseExprs tex
-        NotationFS2.Typesetting.render ms exprs           
+        Typesetting.render ms exprs           
         ms.Position <- 0
         new Avalonia.Media.Imaging.Bitmap(ms)
 
     let convertSymbol (tex:string) = 
         ms.Position <- 0
         let exprs = Parser.parseExprs tex
-        NotationFS2.Typesetting.renderAlpha ms exprs           
+        Typesetting.renderAlpha ms exprs           
         ms.Position <- 0
         new Avalonia.Media.Imaging.Bitmap(ms)
 
     let image (tex:string) =
         ms.Position <- 0
         let exprs = Parser.parseExprs tex
-        NotationFS2.Typesetting.render ms exprs           
+        Typesetting.render ms exprs           
         ms.Position <- 0
         SKImage.FromEncodedData(ms)
 
@@ -62,7 +62,6 @@ module Model2 =
         m.Paint.StrokeWidth <- s
         Model2D m
 
-    // let evalModel (cons:Map<string,float>) (vars:Map<string,Variable>) (fns:Map<string,Binder.BoundExpr>) t f (m:SKCharts.Model2D) =
     let evalModel (m:Maps) t f (model:SKCharts.Model2D) :unit =
         let xvalues = model.Xvalues
         let yvalues = model.Yvalues
@@ -93,7 +92,6 @@ module Model2 =
         model.UpdateBounds()
 
 
-    // let createTeXModel (cons:Map<string,float>) (vars:Map<string,Variable>) (fns:Map<string,Binder.BoundExpr>) tex t c s =
     let createTeXModel (maps:Maps) tex t c s :Model =
         let s': Symbols = {
             constants = maps.constants.Keys
@@ -142,15 +140,6 @@ module Views =
             AttrBuilder<'t>.CreateProperty<obj>(ToggleButton.ContentProperty, value, ValueNone)
 
 
-    // let ComponentSlider 
-    //     (id:string)
-    //     (value:string * Variable) 
-    //     (cons:Map<string,float>) 
-    //     (vars:Map<string,Variable>) 
-    //     (fns:Map<string,Binder.BoundExpr>) 
-    //     (tex_models: array<string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2D>)
-    //     (target:IReadable<string>) 
-    //     (chart:SKChart2D) =
     let ComponentSlider 
         (value:string * Variable) 
         (maps:Maps) 
@@ -201,8 +190,35 @@ module Views =
             ]
         )
 
+    let FunctionLine 
+        (i:int)
+        (s:string)
+        (notation:IReadable<bool>) =
+        Component(fun ctx ->
+            let notation = ctx.usePassedRead notation
+            StackPanel.create [
+                StackPanel.orientation Orientation.Horizontal
+                StackPanel.children [
+                    TextBlock.create [
+                        TextBlock.verticalAlignment VerticalAlignment.Center
+                        TextBlock.width 40
+                        TextBlock.text ($"{i + 1}: ")
+                    ]
+                    match notation.Current with
+                    | true -> 
+                        Image.create [
+                            Image.stretch Media.Stretch.None
+                            Image.source (Converter.convert s)
+                        ]
+                    | false ->
+                        SelectableTextBlock.create [
+                            SelectableTextBlock.text s
+                        ]                      
+                ]
+            ]
+        )
 
-    // let view2 (constants:Map<string,float>, variables:Map<string,Variable>, functions:Map<string,Binder.BoundExpr>, models:list<Model>) =
+
     let view2 (maps:Maps, models:list<Model>) =
         Component(fun ctx ->
             let tex_models = texModels models
@@ -239,6 +255,11 @@ module Views =
                 symbols_strs
                 |> Array.filter (fun x -> maps.functions.ContainsKey x)
                 |> Array.map (fun x -> x,maps.functions[x])
+
+            let tex_strs_i = 
+                tex_models
+                |> Array.map (fun (tex,_,_,_) -> tex)
+                |> Array.indexed
 
             let cons = ctx.useState _cons
             let vars = ctx.useState _vars
@@ -394,33 +415,53 @@ module Views =
                                 ListBox.column 0
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                // ListBox.dataItems [for i in vars.Current -> ComponentSlider $"slider-{i}" i constants variables functions tex_models target c.Chart]
                                 ListBox.dataItems [for i in vars.Current -> ComponentSlider i maps tex_models target c.Chart]
                             ]
                             ListBox.create [
                                 ListBox.column 1
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                match notation.Current with
-                                | true ->
-                                    ListBox.dataItems (Array.map (fun (tex, _, _, _) -> tex) tex_models)
-                                    ListBox.itemTemplate (
-                                        DataTemplateView<string>.create(fun s ->
-                                            Image.create [
-                                                Image.stretch Media.Stretch.None
-                                                Image.source (Converter.convert s)
-                                            ]
-                                        )
-                                    )
-                                | false ->
-                                    ListBox.dataItems (Array.map (fun (tex, _, _, _) -> tex) tex_models)
-                                    ListBox.itemTemplate (
-                                        DataTemplateView<string>.create(fun s ->
-                                            SelectableTextBlock.create [
-                                                SelectableTextBlock.text s
-                                            ]    
-                                        )
-                                    )                                
+                                ListBox.dataItems [for (i,s) in tex_strs_i -> FunctionLine i s notation]
+                                // match not notation.Current with
+                                // | true ->
+                                //     ListBox.dataItems ((Array.map (fun (tex, _, _, _) -> tex) tex_models) |> Array.indexed)
+                                //     ListBox.itemTemplate (
+                                //         DataTemplateView<int * string>.create(fun (i, s) ->
+                                //             StackPanel.create [
+                                //                 StackPanel.orientation Orientation.Horizontal
+                                //                 StackPanel.children [
+                                //                     TextBlock.create [
+                                //                         TextBlock.width 40
+                                //                         TextBlock.verticalAlignment VerticalAlignment.Center
+                                //                         TextBlock.text (string (i + 1) + ": ")
+                                //                     ]
+                                //                     Image.create [
+                                //                         Image.stretch Media.Stretch.None
+                                //                         Image.source (Converter.convert s)
+                                //                     ]
+                                //                 ]
+                                //             ]
+                                //         )
+                                //     )
+                                // | false ->
+                                //     ListBox.dataItems ((Array.map (fun (tex, _, _, _) -> tex) tex_models) |> Array.indexed)
+                                //     ListBox.itemTemplate (
+                                //         DataTemplateView<int * string>.create(fun (i, s) ->
+                                //             StackPanel.create [
+                                //                 StackPanel.orientation Orientation.Horizontal
+                                //                 StackPanel.children [
+                                //                     TextBlock.create [
+                                //                         TextBlock.width 40
+                                //                         TextBlock.verticalAlignment VerticalAlignment.Center
+                                //                         TextBlock.text (string (i + 1) + ": ")
+                                //                     ]                                                    
+                                //                     SelectableTextBlock.create [
+                                //                         SelectableTextBlock.text s
+                                //                     ]    
+                                //                 ]
+                                //             ]
+                                //         )
+                                //     )                                
                             ]
                         ]
                     ]
@@ -431,6 +472,13 @@ module Views =
             ]
         )
 
+    let latexContent (str:string) =
+        if str.Contains '$' then
+            let a = str.IndexOf '$'
+            let b = str.LastIndexOf '$'
+            str[a..b - 1]
+        else str
+
     let viewTest() =
         Component(fun ctx -> 
             let tex = ctx.useState "f(x)"
@@ -438,20 +486,27 @@ module Views =
             DockPanel.create [
                 DockPanel.lastChildFill true
                 DockPanel.children [
-                    Button.create [
-                        Button.dock Dock.Bottom
-                        Button.content "convert"
-                        Button.onClick (fun _ -> tex.Set textbox.Current.Text)
-                    ]
-                    TextBox.create [
-                        TextBox.init textbox.Set
-                        TextBox.dock Dock.Bottom
-                        TextBox.height 300
-                        TextBox.width 800                        
+                    StackPanel.create [
+                        StackPanel.horizontalAlignment HorizontalAlignment.Center
+                        StackPanel.dock Dock.Bottom
+                        StackPanel.margin (Thickness(0., 0., 0., 15.))
+                        StackPanel.children [
+
+                            Button.create [
+                                Button.content "convert"
+                                Button.onClick (fun _ -> tex.Set textbox.Current.Text)
+                            ]
+                            TextBox.create [
+                                TextBox.init textbox.Set
+                                TextBox.height 300
+                                TextBox.width 800                        
+                            ]
+                            
+                        ]
                     ]
                     Image.create [
                         Image.stretch Media.Stretch.None
-                        Image.source (Converter.convert tex.Current)
+                        Image.source (Converter.convert (latexContent tex.Current))
                     ]
                 ]
             ]    

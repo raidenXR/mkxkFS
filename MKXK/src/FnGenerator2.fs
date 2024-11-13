@@ -10,40 +10,118 @@ type FnDescription = {
     err: float
 }
 
+// [<Struct>] 
+type BinaryProbs = {
+    add:  int
+    sub:  int
+    mult: int
+    div:  int
+    pow:  int
+}
+
+// [<Struct>]
+type UnaryProbs = {
+    idnt: int
+    neg:  int
+    log:  int
+    ln:   int
+    exp:  int
+    abs:  int
+    sqrt: int 
+    cos:  int
+    sin:  int
+    tan:  int
+}
+
+// [<Struct>]
 type TokenIdProbs = {
-        Pnumber: int
-        Pconstant: int
-        Pvariable: int
-        Pfunction: int
-        Pbinary: int
-        Punary: int
-        Pparen: int
-        Pfrac: int
-        Psum: int
-        Pprod: int
-        Pint: int
-        Pdiff: int
-    } 
-    with 
-        static member Default = {
-            Pnumber = 10
-            Pconstant = 10
-            Pvariable = 20
-            Pfunction = 10
-            Pbinary = 25
-            Punary = 15
-            Pparen = 10
-            Pfrac = 10
-            Psum = 0
-            Pprod = 0
-            Pint = 0
-            Pdiff = 0
-        }
-        member x.ToArray() = Array.map float [|
-            x.Pnumber; x.Pconstant; x.Pvariable; x.Pfunction
-            x.Pbinary; x.Punary; x.Pparen; x.Pfrac
-            x.Psum; x.Pprod; x.Pint; x.Pdiff
-        |]
+    numb:  int
+    con:   int
+    var:   int
+    fn:    int
+    bin:   int
+    unr:   int
+    paren: int
+    frac:  int
+    sum:   int
+    prod:  int
+    int:   int
+    diff:  int  
+}
+
+type Probs = {
+    unaries: UnaryProbs
+    binaries: BinaryProbs
+    tokenids: TokenIdProbs
+}
+
+module Probabilities =
+
+    /// updates the values on probabilities vector in [0,1] range
+    let update (ps:array<float>) =
+        let s = Array.sum ps
+        for i in 0..ps.Length - 1 do ps[i] <- ps[i] / s 
+        for i in 1..ps.Length - 1 do ps[i] <- ps[i] + ps[i - 1]  
+
+    let array (p:obj) :array<float> =
+        match p with
+        | :? UnaryProbs as u -> 
+            Array.map float [|
+                u.idnt; u.neg; u.log; u.ln; 
+                u.exp; u.abs; u.sqrt; 
+                u.cos; u.sin; u.tan
+            |]
+        | :? BinaryProbs as b ->
+            Array.map float [|
+                b.add; b.sub; b.mult; b.div; b.pow
+            |]
+        | :? TokenIdProbs as t ->
+            Array.map float [|
+                t.numb; t.con; t.var; t.fn
+                t.bin; t.unr; t.paren; t.frac
+                t.sum; t.prod; t.int; t.diff
+            |]            
+        | _ -> failwith "inappropriate type"
+        
+
+    [<return: Struct>]
+    let (|P|_|) id (ps:array<float>) p = 
+        if p <= ps[id] then ValueSome true else ValueNone
+
+// type TokenIdProbs = {
+//         Pnumber: int
+//         Pconstant: int
+//         Pvariable: int
+//         Pfunction: int
+//         Pbinary: int
+//         Punary: int
+//         Pparen: int
+//         Pfrac: int
+//         Psum: int
+//         Pprod: int
+//         Pint: int
+//         Pdiff: int
+//     } 
+//     with 
+//         static member Default = {
+//             Pnumber = 10
+//             Pconstant = 10
+//             Pvariable = 10
+//             Pfunction = 10
+//             Pbinary = 15
+//             Punary = 15
+//             Pparen = 10
+//             Pfrac = 10
+//             Psum = 0
+//             Pprod = 0
+//             Pint = 0
+//             Pdiff = 0
+//         }
+//         member x.ToArray() = Array.map float [|
+//             x.Pnumber; x.Pconstant; x.Pvariable; x.Pfunction
+//             x.Pbinary; x.Punary; x.Pparen; x.Pfrac
+//             x.Psum; x.Pprod; x.Pint; x.Pdiff
+//         |]
 
 
 module FnGeneration =
@@ -60,7 +138,21 @@ module FnGeneration =
         let binaryops = [|Plus; Minus; Star; Cdot; Slash; Accent|]
         let unaryops = [|Plus; Minus; Log; Ln; Exp; Sqrt|]
 
-        let ps = probs.ToArray()
+        let ps = Probabilities.array probs
+
+        let [<Literal>] numb = 0
+        let [<Literal>] con = 0
+        let [<Literal>] var = 0
+        let [<Literal>] fn = 0
+        let [<Literal>] bin = 0
+        let [<Literal>] unr = 0
+        let [<Literal>] paren = 0
+        let [<Literal>] frac = 0
+        let [<Literal>] sum = 0
+        let [<Literal>] prod = 0
+        let [<Literal>] int = 0
+        let [<Literal>] diff = 0
+
         // let ps = {TokenIdProbs.Default with Pnumber = 5}.ToArray()
         // probabilities for each Node-type
         // let ps = 
@@ -81,11 +173,14 @@ module FnGeneration =
         //     |] |> Array.map (float)    
         let r = Random()
         
-        /// updates the values on probabilities vector in [0,1] range
-        let update_probs () =
+        let update_probs (probs:array<float>) =
             let s = Array.sum ps
             for i in 0..ps.Length - 1 do ps[i] <- ps[i] / s 
             for i in 1..ps.Length - 1 do ps[i] <- ps[i] + ps[i - 1]  
+
+        [<return: Struct>]
+        let (|P|_|) id p = 
+            if p <= ps[id] then ValueSome true else ValueNone
 
 
         let mutable lb = min lbound ubound
@@ -111,7 +206,7 @@ module FnGeneration =
             cons |> Array.iter (fun s -> cons_map.Add(s, 0))
             vars |> Array.iter (fun s -> vars_map.Add(s, 0))
             fns |> Array.iter (fun s -> fns_map.Add(s, 0))
-            update_probs ()
+            Probabilities.update ps
 
 
         let increase_count () = count <- count + 1
@@ -147,13 +242,6 @@ module FnGeneration =
             | p when p <= ps[5] -> createUnary unaryops
             | p when p <= ps[6] -> createParen () 
             | p when p <= ps[7] -> createFrac ()
-            // | p when p > ps[0] && p <= ps[1] -> createConstant 0.04
-            // | p when p > ps[1] && p <= ps[2] -> createVariable 0.035
-            // | p when p > ps[2] && p <= ps[3] -> createFunction 0.45
-            // | p when p > ps[3] && p <= ps[4] -> createBinary binaryops
-            // | p when p > ps[4] && p <= ps[5] -> createUnary unaryops
-            // | p when p > ps[5] && p <= ps[6] -> createParen () 
-            // | p when p > ps[6] && p <= ps[7] -> createFrac ()
             | _ -> createBinary binaryops       
     
         // implements a Simulated annelaing logic for the randomness of the number
@@ -161,7 +249,6 @@ module FnGeneration =
             let r_number () = (b - a) * r.NextDouble() + a
             let mutable r_n = r_number ()            
             while predicateN r_n 0.075 do r_n <- r_number ()
-            // count <- count + 1
             n_numbers <- n_numbers + 1
             Number (ref r_n)
                 
@@ -171,7 +258,6 @@ module FnGeneration =
             else
                 let mutable t = rtarget cons
                 while predicateV cons_map t p do t <- rtarget cons
-                // count <- count + 1
                 n_constants <- n_constants + 1
                 cons_map[t] <- cons_map[t] + 1
                 Constant (ref t)
@@ -182,7 +268,6 @@ module FnGeneration =
             else
                 let mutable t = rtarget vars
                 while predicateV vars_map t p do t <- rtarget vars
-                // count <- count + 1
                 n_variables <- n_variables + 1
                 vars_map[t] <- vars_map[t] + 1
                 Symbol (ref t)
@@ -193,14 +278,12 @@ module FnGeneration =
             else
                 let mutable t = rtarget fns
                 while predicateV fns_map t p do t <- rtarget fns
-                // count <- count + 1
                 n_functions <- n_functions + 1
                 fns_map[t] <- fns_map[t] + 1
                 Symbol (ref t)
 
         and createParen () =
             if n_parens < count / 3 then 
-                // count <- count + 1
                 n_parens <- n_parens + 1
                 let expr = createExpr ()
                 Parenthesized (expr)
@@ -210,7 +293,6 @@ module FnGeneration =
         and createUnary (ops:array<TokenId>) = 
             let op = rtarget ops
             let expr = createExpr ()
-            // count <- count + 1
             n_unaries <- n_unaries + 1            
             Unary (expr, ref op)
             
@@ -219,14 +301,12 @@ module FnGeneration =
             let op = rtarget ops
             let lhs = createExpr ()
             let rhs = createExpr ()
-            // count <- count + 1
             n_binaries <- n_binaries + 1
             Binary (lhs, rhs, ref op)            
         
         and createFrac () = 
             let u = createExpr ()
             let l = createExpr ()
-            // count <- count + 1
             n_fracs <- n_fracs + 1
             Frac (u, l)
 
@@ -237,6 +317,18 @@ module FnGeneration =
             Assignment (fn_name, binary)
 
 
+    // let generatefn 
+    //     (fn_name:string) 
+    //     (constants:seq<string>) 
+    //     (variables:seq<string>) 
+    //     (functions:seq<string>) 
+    //     lbound 
+    //     ubound 
+    //     maxnodes :Expr =
+    //     let generator = FnGenerator(constants, variables, functions, lbound, ubound, maxnodes)
+    //     generator.fngenerate fn_name
+
+
     let generatefn (fn_name:string) (symbols:Symbols) (probs:TokenIdProbs) lbound ubound maxnodes :Expr =
         let generator = FnGenerator(symbols, probs, lbound, ubound, maxnodes)
         generator.fngenerate fn_name    
@@ -244,6 +336,14 @@ module FnGeneration =
     /// parses a BoundExpr from a tex-string
     let fromtex (symbols:Symbols) (tex:string) = Binder.bind (Parser.parse symbols tex)
 
+    // let generatefnEXT 
+    //     (fn_name:string) 
+    //     (constans:seq<string>) 
+    //     (variables:seq<string>) 
+    //     (functions:seq<string>)
+    //     (lbound:float)
+    //     (ubound:float)
+    //     (maxnodes:int) :Expr = 
     let generatefnEXT fn_name (symbols:Symbols) (probs:TokenIdProbs) lbound ubound maxnodes :Expr = 
         let mutable fn = generatefn fn_name symbols probs lbound ubound maxnodes
         while (ExprTree.variablesAll fn).Length < 2 do
@@ -255,11 +355,23 @@ module Mutation =
     open ExprTree
 
     type OptimizationDesc = {
+        // constants: Map<string,float>
+        // variables: Map<string,Variable>
+        // functions: Map<string,Binder.BoundExpr>
         maps: Maps
         x: array<float>
         y: array<float>        
         err: float
     }
+
+            
+    // type OptimizationDesc = {
+    //     maps: Maps
+    //     x: array<float>
+    //     y: array<float>        
+    //     err: float
+    // }
+            
 
     /// select random element from an array
     let inline private pick (vec:array<'T>) (r:Random) :'T = 
@@ -311,6 +423,9 @@ module Mutation =
 
 
     let optimizefn (pars:OptimizationDesc) N lb ub t f :Expr*float =
+        // let cons = pars.constants.Keys |> Array.ofSeq
+        // let vars = pars.variables.Keys |> Array.ofSeq
+        // let fns  = pars.functions.Keys |> Array.ofSeq
         let cons = Array.ofSeq (pars.maps.constants.Keys)
         let vars = Array.ofSeq (pars.maps.variables.Keys)
         let fns  = Array.ofSeq (pars.maps.functions.Keys)

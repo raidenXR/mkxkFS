@@ -12,12 +12,10 @@ type Symbols = {
 }
 
 type Parser(source: string, symbols:Symbols) = 
-// type Parser(source: string, constants: seq<string>, variables: seq<string>, functions: seq<string>) = 
     let mutable pos = 0
     let mutable tokens: list<Token> = []
     let append (token: Token) = tokens <- tokens @ [token]
     // let tokens = new System.Collections.Generic.List<Token>(20)
-    // let symbols = variables |> Array.append constants |> Array.append functions
     let symbols' = Seq.concat [symbols.variables; symbols.constants; symbols.functions] |> Array.ofSeq
 
     do
@@ -264,9 +262,7 @@ type Parser(source: string, symbols:Symbols) =
 module Parser =
     /// Parses a tex string and returns an Expr
     let parse (symbols:Symbols) (tex:string) :Expr = 
-    // let parse (tex:string) (constants:seq<string>) (variables:seq<string>) (functions:seq<string>) :Expr = 
         let parser = Parser(tex, symbols)
-        // let parser = Parser(tex, constants, variables, functions)
         parser.ParseExpr()
 
     /// parses a file that contains gnu-points columns

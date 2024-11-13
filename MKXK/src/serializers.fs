@@ -188,6 +188,11 @@ module Html =
         html.writeln_ignore "</ol>"
         html 
 
+    let olisti (dx:int) (items:seq<_>) (html:HtmlBuilder) = 
+        html.writeln_ignore $"<ol start=\"{dx}\">"
+        items |> Seq.iteri (fun i x -> html.writeln_ignore $"<li>{string x}</li>")
+        html.writeln_ignore "</ol>"
+        html 
             
     let ulist (items:seq<_>) (html:HtmlBuilder) = 
         html.writeln_ignore "<ul>"
