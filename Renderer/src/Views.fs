@@ -6,6 +6,7 @@ open Avalonia.Controls.ApplicationLifetimes
 open Avalonia.Themes.Fluent
 open Avalonia.FuncUI.Hosts
 open Avalonia.Controls
+open Avalonia.Interactivity
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
 open Avalonia.Layout
@@ -23,10 +24,10 @@ module Converter =
 
     let ms = new System.IO.MemoryStream(8 * 1024)
 
-    let convert (tex:string) = 
+    let convert (transparent:bool) (tex:string) = 
         ms.Position <- 0
         let exprs = Parser.parseExprs tex
-        Typesetting.render ms exprs           
+        Typesetting.render transparent ms exprs           
         ms.Position <- 0
         new Avalonia.Media.Imaging.Bitmap(ms)
 
@@ -40,7 +41,7 @@ module Converter =
     let image (tex:string) =
         ms.Position <- 0
         let exprs = Parser.parseExprs tex
-        Typesetting.render ms exprs           
+        Typesetting.render true ms exprs           
         ms.Position <- 0
         SKImage.FromEncodedData(ms)
 
@@ -139,6 +140,10 @@ module Views =
         static member content<'t when 't :> ToggleButton>(value:obj) :IAttr<'t> =
             AttrBuilder<'t>.CreateProperty<obj>(ToggleButton.ContentProperty, value, ValueNone)
 
+    type ContentControl with
+        static member onSizeChanged<'t when 't :> ContentControl>(func: SizeChangedEventArgs -> unit, ?subPatchOptions) :IAttr<'t> =
+            AttrBuilder<'t>.CreateSubscription<SizeChangedEventArgs>(ContentControl.SizeChangedEvent, func, ?subPatchOptions = subPatchOptions)
+
 
     let ComponentSlider 
         (value:string * Variable) 
@@ -208,7 +213,7 @@ module Views =
                     | true -> 
                         Image.create [
                             Image.stretch Media.Stretch.None
-                            Image.source (Converter.convert s)
+                            Image.source (Converter.convert true s)
                         ]
                     | false ->
                         SelectableTextBlock.create [
@@ -266,6 +271,7 @@ module Views =
             let fns = ctx.useState _fns            
             let target = ctx.useState String.Empty
             let notation = ctx.useState true
+            // let y = ctx.useState = 600
         
             DockPanel.create [
                 DockPanel.lastChildFill true
@@ -406,26 +412,36 @@ module Views =
                         ]
                     ]
                     Grid.create [
+                        Grid.dock Dock.Right
+                        Grid.maxWidth 340
+                        // Grid.maxHeight 600
+                        Grid.margin (Thickness(0.0, 0.0, 10.0, 10.0))
+                        Grid.children [
+                            ListBox.create [
+                                ListBox.background "White"
+                                ListBox.column 1
+                                ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
+                                ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
+                                ListBox.dataItems [for (i,s) in tex_strs_i -> ComponentFnNotation i s notation]
+                            ]                            
+                        ]
+                    ]
+                    Grid.create [
                         Grid.dock Dock.Bottom
                         Grid.maxHeight 200
-                        Grid.margin (Thickness(0.0, 0.0, 0.0, 10.0))
-                        Grid.columnDefinitions "1*, 1*"
+                        Grid.margin (Thickness(0.0, 0.0, 10.0, 10.0))
                         Grid.children [                            
                             ListBox.create [
                                 ListBox.column 0
+                                ListBox.background "White"
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.dataItems [for i in vars.Current -> ComponentSlider i maps tex_models target c.Chart]
                             ]
-                            ListBox.create [
-                                ListBox.column 1
-                                ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems [for (i,s) in tex_strs_i -> ComponentFnNotation i s notation]
-                            ]
                         ]
                     ]
                     ContentControl.create [
+                        // ContentControl.onSizeChanged (fun s -> c.Width <- s.NewSize.Width)
                         ContentControl.content c
                     ]                            
                 ]
@@ -466,7 +482,7 @@ module Views =
                     ]
                     Image.create [
                         Image.stretch Media.Stretch.None
-                        Image.source (Converter.convert (latexContent tex.Current))
+                        Image.source (Converter.convert true (latexContent tex.Current))
                     ]
                 ]
             ]    

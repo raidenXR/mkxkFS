@@ -259,7 +259,7 @@ module Typesetting =
         | _ -> failwith $"{string expr} is not implemented yet"
                            
         
-    let render (stream:System.IO.Stream) (exprs:seq<Expr>) =
+    let render (transparent:bool) (stream:System.IO.Stream) (exprs:seq<Expr>) =
         let total_size = Measure.totalSize exprs
         let total_hbox = Measure.totalHbox exprs
         let w = int (total_size.w + 2f * fontsize)
@@ -268,7 +268,7 @@ module Typesetting =
 
         use surface = SKSurface.Create(info)
         use canvas = surface.Canvas
-        canvas.Clear(SKColors.White)
+        if not transparent then canvas.Clear(SKColors.White)
 
         let mutable pos = Vector2(fontsize, abs (total_hbox.dy2) - fontsize)
         for expr in exprs do
