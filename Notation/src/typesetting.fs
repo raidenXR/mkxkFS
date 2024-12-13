@@ -42,6 +42,8 @@ module Typesetting =
     
     let [<Literal>] fontsize = 18f
 
+    let [<Literal>] binoffset = 4f
+
     [<Struct>]
     type Size = {
         w: float32 
@@ -75,6 +77,10 @@ module Typesetting =
                 printExprs [u] (indent + "--")
             | Down (e,d) ->
                 printExprs [d] (indent + "--")
+            | Over (e,o) -> 
+                printExprs [o] (indent + "--")
+            | Under (e,u) -> 
+                printExprs [u] (indent + "--")
             | _ -> failwith $"(string expr) not implemented yet"
 
 
@@ -126,7 +132,7 @@ module Typesetting =
                 let lhs_size = size lhs s
                 let rhs_size = size rhs s
                 let w = max lhs_size.w rhs_size.w
-                let h = lhs_size.h + rhs_size.h + 0.5f * fontsize
+                let h = lhs_size.h + rhs_size.h + 0.5f * fontsize + binoffset
                 {w = w; h = h}
             | Grouped group ->
                 let mutable w = 0f
@@ -137,13 +143,23 @@ module Typesetting =
                     h <- max h g_size.h
                 {w = w; h = h}
             | Up (e,u) ->
-                // let e_size = size e s
                 let u_size = size u (0.8f * s)
                 u_size
             | Down (e,d) ->
-                // let e_size = size e s
                 let d_size = size d (0.8f * s)
                 d_size
+            | Downup (e,u,d) ->
+                let u_size = size u (0.8f * s)
+                let d_size = size d (0.8f * s)
+                let w = max u_size.w d_size.w
+                let h = u_size.h + d_size.h
+                {w = w; h = h}
+            | Over _ 
+            | Under _
+            | Underover _ ->
+                failwith "Over, under, underover not implemented yet"
+            | Scaled (str,e) ->
+                failwith "scaled expr not implemented yet"
             | _ -> failwith $"{string expr} is not implemented yet"
 
 
@@ -164,8 +180,6 @@ module Typesetting =
             | MathOperator _ 
             | Symbol _ -> {dy1 = 0f; dy2 = 0f}
             | Binary (n,l,r) ->
-                // let lhs_hbox = hbox2 l s
-                // let rhs_hbox = hbox2 r s                
                 let lhs_size = size l s
                 let rhs_size = size r s
                 {dy1 = lhs_size.h; dy2 = -rhs_size.h}
@@ -183,6 +197,12 @@ module Typesetting =
             | Down (e,d) ->
                 let d_size = size d (0.8f * s)
                 {dy1 = 0f; dy2 = -d_size.h * 0.3f}
+            | Downup _
+            | Over _
+            | Under _
+            | Underover _
+            | Scaled _ ->
+                failwith "not implemented yet"
             | _ -> failwith $"{string expr} is not implemented yet"                    
 
 
@@ -230,7 +250,7 @@ module Typesetting =
             let lhs_hbox = Measure.hbox lhs s
             let rhs_hbox = Measure.hbox rhs s
             let y_line = pt.Y + 0.5f * fontsize
-            let y0 = y_line + abs (lhs_hbox.dy2)
+            let y0 = y_line + abs (lhs_hbox.dy2) + binoffset
             let y1 = y_line - s * fontsize - abs (rhs_hbox.dy1)
 
             let mutable pt0 = Vector2(x0, y0)
@@ -256,6 +276,12 @@ module Typesetting =
             let mutable pt0 = Vector2(pt.X, pt.Y - 0.3f * d_size.h)
             typeset d &pt0 (0.8f * s) canvas r  
             pt.X <- pt.X + d_size.w
+        | Downup _
+        | Over _
+        | Under _
+        | Underover _
+        | Scaled _ ->
+            failwith "not implemented yet"
         | _ -> failwith $"{string expr} is not implemented yet"
                            
         

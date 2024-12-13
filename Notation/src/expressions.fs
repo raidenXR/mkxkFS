@@ -2,45 +2,44 @@ namespace NotationFS
 open System
 open System.Text
 
-[<Struct>]
 type TokenId =
-    | WhiteSpace
-    | Ord
-    | Op
-    | Bin
-    | Rel
-    | Open
-    | Close
-    | Punct
-    | Inner
-    | Acc
-    | Rad
-    | Vcent
-    | GroupedOpen
-    | GroupedClose
-    | Number
-    | Grouped
-    | Identifier
-    | MathOperator
-    | Symbol
-    | Space
-    | Binary
-    | Sub
-    | Super
-    | Subup
-    | Over
-    | Under
-    | Underover
-    | Up
-    | Down
-    | Downup
-    | Unary
-    | Scaled
-    | Stretchy
-    | Array
-    | Text
-    | Bad
-    | Eof
+    | WhiteSpace = 0
+    | Ord = 1
+    | Op = 2
+    | Bin = 3
+    | Rel = 4
+    | Open = 5
+    | Close = 6
+    | Punct = 7
+    | Inner = 8
+    | Acc = 9
+    | Rad = 10
+    | Vcent = 11
+    | GroupedOpen = 12
+    | GroupedClose = 13
+    | Number = 14
+    | Grouped = 15
+    | Identifier = 16
+    | MathOperator = 17
+    | Symbol = 18
+    | Space = 19
+    | Binary = 20
+    | Sub = 21
+    | Super = 22
+    | Subup = 23
+    | Over = 24
+    | Under = 25
+    | Underover = 26
+    | Up = 27
+    | Down = 28
+    | Downup = 29
+    | Unary = 30
+    | Scaled = 31
+    | Stretchy = 32
+    | Array = 33
+    | Text = 34
+    | Bad = 35
+    | Eof = 36
 
 
 [<Struct>]
@@ -49,16 +48,6 @@ type Token(pos: int, str: string, id: TokenId) =
     member _.Str = str
     member _.Id = id
 
-
-// type TexSymbolType =
-//     | Ord = 0
-//     | Op = 1
-//     | Bin = 2
-//     | Rel = 3
-//     | Open = 4
-//     | Close = 5
-//     | Pun = 6
-//     | Accent = 7
 
 [<Struct>]
 type TexSymbolType =
@@ -76,16 +65,6 @@ type Alignment =
     | AlignCenter = 1
     | AlignRight = 2
     | AlignDefault = 3
-
-
-[<Struct>]
-type HBox = {
-    x: float32
-    y: float32
-    w: float32
-    h: float32
-    s: float32
-}
 
 
 type Expr = 
@@ -106,7 +85,7 @@ type Expr =
     | Down of Expr * Expr
     | Downup of Expr * Expr * Expr
     | Unary of string * Expr
-    | Scaled of string * Expr
+    | Scaled of Expr * float
     | Stretchy of Expr
     | EArray of list<Alignment> * list<ArrayLine>
     | Text of string 
@@ -133,7 +112,7 @@ type Expr =
         | Down _ -> "Down:"
         | Downup _ -> "Downup:"
         | Unary (s,e) -> s
-        | Scaled (s,e) -> s
+        | Scaled (s,e) -> "Scaled: " + (string s)
         | Stretchy _ -> "Stretchy:"
         | EArray _ -> "EArray:"
         | Text s -> s
@@ -185,7 +164,17 @@ module Notation =
         "\\underline",    fun e -> Under (e, (Symbol (Accent, "\u00AF")))
     ]
 
-    let binaryops = ["\\frac"; "\\tfrac"; "\\dfrac"; "\\stackrel"; "\\overset"; "\\underset"; "\\binom"]
+    let binaryops = [
+        "\\frac" 
+        "\\ode"
+        "\\pde"
+        "\\tfrac" 
+        "\\dfrac" 
+        "\\stackrel" 
+        "\\overset" 
+        "\\underset" 
+        "\\binom"
+    ]
     
     let scalers = Map [
         "\\bigg", 2.2

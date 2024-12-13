@@ -71,8 +71,8 @@ let desc: Mutation.OptimizationDesc = {
     err = 1e3
 }
 let mutable counter = 1
-let [<Literal>] N = 600 // optimization loop
-let [<Literal>] L = 2000 // no of rng fns
+let [<Literal>] N = 100 // optimization loop
+let [<Literal>] L = 1000 // no of rng fns
 let struct(ci,cj) = Console.GetCursorPosition()
 
 let cout (pair:Expr * float) =
@@ -128,11 +128,11 @@ let models = [
     "f3(x)", Model2.createTeXModel maps fns_optimized[2] "C_A" Colors.Blue 2.0f
     "f4(x)", Model2.createTeXModel maps fns_optimized[3] "C_A" Colors.Brown 2.0f
     "f5(x)", Model2.createTeXModel maps fns_optimized[4] "C_A" Colors.Silver 2.0f
-    // "f6(x)", Model2.createTeXModel maps fns_optimized[5] "C_A" Colors.Black 2.0f
-    // "f7(x)", Model2.createTeXModel maps fns_optimized[6] "C_A" Colors.Olive 2.0f
-    // "f8(x)", Model2.createTeXModel maps fns_optimized[7] "C_A" Colors.OrangeRed 2.0f
-    // "f9(x)", Model2.createTeXModel maps fns_optimized[8] "C_A" Colors.CornflowerBlue 2.0f
-    // "f10(x)", Model2.createTeXModel maps fns_optimized[9] "C_A" Colors.Fuchsia 2.0f
+    "f6(x)", Model2.createTeXModel maps fns_optimized[5] "C_A" Colors.Black 2.0f
+    "f7(x)", Model2.createTeXModel maps fns_optimized[6] "C_A" Colors.Olive 2.0f
+    "f8(x)", Model2.createTeXModel maps fns_optimized[7] "C_A" Colors.OrangeRed 2.0f
+    "f9(x)", Model2.createTeXModel maps fns_optimized[8] "C_A" Colors.CornflowerBlue 2.0f
+    "f10(x)", Model2.createTeXModel maps fns_optimized[9] "C_A" Colors.Fuchsia 2.0f
 ]
 
 

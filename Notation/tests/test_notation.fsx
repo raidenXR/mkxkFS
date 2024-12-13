@@ -41,7 +41,7 @@ Directory.CreateDirectory dir_name |> ignore
 for fn in (List.map NotationFS.Parser.parseExprs functions) do    
     let hbox = Typesetting.Measure.totalSize fn 
     use fs = File.Create($"notation_images/fn{i}.png")
-    Typesetting.render fs fn
+    Typesetting.render false fs fn
     i <- i + 1
     fs.Flush()
     fs.Close()

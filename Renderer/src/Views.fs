@@ -144,6 +144,21 @@ module Views =
         static member onSizeChanged<'t when 't :> ContentControl>(func: SizeChangedEventArgs -> unit, ?subPatchOptions) :IAttr<'t> =
             AttrBuilder<'t>.CreateSubscription<SizeChangedEventArgs>(ContentControl.SizeChangedEvent, func, ?subPatchOptions = subPatchOptions)
 
+    type SKChart2DControl with
+        // static member width<'t when 't :> SKChart2DControl>(value:float) :IAttr<'t> =
+        //     AttrBuilder<'t>.CreateProperty<float>(, value, ValueNone)       
+
+        // static member height<'t when 't :> SKChart2DControl>(value:float) :IAttr<'t> =
+        //     AttrBuilder<'t>.CreateProperty<float>(SKChart2DControl.HeightProperty, value, ValueNone)       
+        
+        static member chart<'t when 't :> SKChart2DControl>(value:SKChart2D) :IAttr<'t> =
+            AttrBuilder<'t>.CreateProperty<SKChart2D>(SKChart2DControl.ChartProperty, value, ValueNone)       
+            
+        static member onSizeChanged<'t when 't :> SKChart2DControl>(func: SizeChangedEventArgs -> unit, ?subPatchOptions) :IAttr<'t> =
+            AttrBuilder<'t>.CreateSubscription<SizeChangedEventArgs>(SKChart2DControl.SizeChangedEvent, func, ?subPatchOptions = subPatchOptions)
+
+        // static member ximg<'t when 't :> SKChart2DControl>(value:string) :IAttr<'t> =
+        //     AttrBuilder<'t>.CreateProperty<SKImage>(SKChart2DControl.Chart.XImgProperty, value, ValueNone)       
 
     let ComponentSlider 
         (value:string * Variable) 
@@ -157,6 +172,7 @@ module Views =
             let target = ctx.usePassedRead target
 
             Grid.create [
+                // Grid.columnDefinitions "100, 140, 120, 100"
                 Grid.columnDefinitions "100, 140, 200"
                 Grid.verticalScrollBarVisibility ScrollBarVisibility.Auto
                 Grid.children [
@@ -166,7 +182,6 @@ module Views =
                         Image.horizontalAlignment HorizontalAlignment.Left
                         Image.source (Converter.convertSymbol s)
                     ]
-
                     Slider.create [
                         Slider.column 1
                         Slider.width 120
@@ -184,13 +199,20 @@ module Views =
                             variable.Set d
                         )
                     ]
-
                     TextBlock.create [
                         TextBlock.column 2
                         TextBlock.width 100
                         TextBlock.maxWidth 100
                         TextBlock.text (variable.Current.ToString("N4"))
                     ]
+                    // Add a TextBlock, to render err, but that would require x y of points & eval on x of raw_points
+                    // instead of x of v.V + dx, not practical
+                    // TextBlock.create [
+                    //     TextBlock.column 3
+                    //     TextBlock.width 100
+                    //     TextBlock.maxWidth 100
+                    //     TextBlock.text ""
+                    // ]
                 ]
             ]
         )
@@ -229,8 +251,9 @@ module Views =
             let tex_models = texModels models
             let raw_models = rawModels models            
             let c = new SKChart2DControl()
-            for m in raw_models do c.Chart.AttachModel m
-            for (tex, f, b, m) in tex_models do c.Chart.AttachModel m            
+            let chart = c.Chart
+            for m in raw_models do chart.AttachModel m
+            for (tex, f, b, m) in tex_models do chart.AttachModel m            
             
             let cons_strs = 
                 tex_models
@@ -271,7 +294,6 @@ module Views =
             let fns = ctx.useState _fns            
             let target = ctx.useState String.Empty
             let notation = ctx.useState true
-            // let y = ctx.useState = 600
         
             DockPanel.create [
                 DockPanel.lastChildFill true
@@ -386,7 +408,6 @@ module Views =
                                         |> Array.map (fun (x, _) -> x,maps.variables[x])
                                         |> vars.Set
 
-                                        target.Set t
                                         // when event triggers, sliders are created anew
                                         // restore the values of the variables map
                                         // to min to match sliders values
@@ -396,11 +417,12 @@ module Views =
                                         )
                                        
                                         for (tex, f, b, m) in tex_models do
-                                            // if target <> String.Empty then
-                                                evalModel maps target.Current b m
+                                            if t <> String.Empty then
+                                                evalModel maps t b m
 
-                                        c.Chart.NormalizeModels()
-                                        c.Chart.XImg <- (Converter.image target.Current)        
+                                        chart.NormalizeModels()
+                                        chart.XImg <- (Converter.image t)        
+                                        target.Set t
                                 )
                             ]
                             
@@ -414,7 +436,6 @@ module Views =
                     Grid.create [
                         Grid.dock Dock.Right
                         Grid.maxWidth 340
-                        // Grid.maxHeight 600
                         Grid.margin (Thickness(0.0, 0.0, 10.0, 10.0))
                         Grid.children [
                             ListBox.create [
@@ -436,14 +457,23 @@ module Views =
                                 ListBox.background "White"
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems [for i in vars.Current -> ComponentSlider i maps tex_models target c.Chart]
+                                ListBox.dataItems [for i in vars.Current -> ComponentSlider i maps tex_models target chart]
                             ]
                         ]
                     ]
                     ContentControl.create [
-                        // ContentControl.onSizeChanged (fun s -> c.Width <- s.NewSize.Width)
                         ContentControl.content c
-                    ]                            
+                    ]
+                    // ViewBuilder.Create<SKChart2DControl> [
+                        // SKChart2DControl.width 800
+                        // SKChart2DControl.chart chart
+                        // SKChart2DControl.clipToBounds true
+                        // SKChart2DControl.onSizeChanged (fun s -> 
+                        //     chart.Width <- s.NewSize.Width
+                        //     chart.Height <- s.NewSize.Height
+                        //     chart.XImg <- Converter.image target.Current
+                        // )
+                    // ]           
                 ]
             ]
         )

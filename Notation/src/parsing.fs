@@ -128,7 +128,7 @@ type Lexer(src: string) =
                         | Symbol (t,s) -> Token(pos, next_word, TokenId.Symbol)
                         | Space s -> Token(pos, next_word, TokenId.Space)
                         | MathOperator s -> Token(pos, next_word, TokenId.MathOperator)
-                        | _ -> Token(pos, next_word, Bad) 
+                        | _ -> Token(pos, next_word, TokenId.Bad)
                         
                     else 
                         advance ()
@@ -180,72 +180,48 @@ type Parser(src:string) =
         let token = nextToken()        
         match token.Id with
         | TokenId.Number -> Number (token.Str)
-            // let e = Number(token.Str)
-            // e
         | TokenId.Identifier -> Identifier (token.Str)
-            // let e = Identifier(nextToken().Str)
-            // exprs.Add e
-            // e
         | TokenId.Over 
         | TokenId.Under 
-        | TokenId.Space   
-        | TokenId.Scaled -> failwith "Over, Under not implemented yet"
+        | TokenId.Space -> failwith "Over, Under not implemented yet"
+        | TokenId.Scaled -> 
+            let s = scalers[token.Str]
+            let n = parseExpr(expressions)
+            Scaled (n,s)         
         | TokenId.MathOperator
         | TokenId.Symbol -> symbols[token.Str] 
-            // let e = symbols[nextToken().Str]
-            // exprs.Add e
-            // e
         | TokenId.Binary -> 
-            // let c = nextToken()
-            let l = parseExpr(expressions)
-            let r = parseExpr(expressions)
-            Binary (token.Str, l, r)
-            // let e = Binary(token.Str,l,r)
-            // exprs.Add e
-            // e
+            match token.Str with
+            | "\\frac" ->
+                let l = parseExpr(expressions)
+                let r = parseExpr(expressions)
+                Binary (token.Str, l, r)
+            | "\\ode" ->
+                let d = Identifier ("d")
+                let l = parseExpr(expressions)
+                let r = parseExpr(expressions)
+                Binary (token.Str, Grouped [d;l], Grouped [d;r])
+            | "\\pde" ->
+                let d = symbols["\\partial"]
+                let l = parseExpr(expressions)
+                let r = parseExpr(expressions)
+                Binary (token.Str, Grouped [d;l], Grouped [d;r])
+            | _ -> failwith "this case in binary is not implemented yet"
         | TokenId.GroupedOpen ->                
             let exprs = List<Expr>()
             while current().Id <> TokenId.GroupedClose && current().Id <> TokenId.Eof do
                 exprs.Add (parseExpr(exprs))
             ignore (nextToken())
             Grouped (exprs)
-            // ignore (nextToken())    // ignore {
-            // let g = List<Expr>()
-            // while current().Id <> TokenId.GroupedClose do 
-                // g.Add (parseExpr())
-            // ignore (nextToken()) // ignore }
-            // let e = Grouped(g)
-            // exprs.Add e
-            // e
         | TokenId.GroupedClose -> RightBrace
-            // ignore (nextToken())   // ignore }
-            // RightBrace
-            // failwith $"GroupedClose - token in pos: {current().Pos}, last token: {exprs.Last().ToString()}"
         | TokenId.Open 
         | TokenId.Close -> enclosures[token.Str] 
-            // let e = enclosures[token.Str]
-            // exprs.Add e
-            // e
         | TokenId.Up ->
             let n = parseExpr(expressions)
             Up (expressions.Last(), n)
-            // ignore (nextToken())    // ignore ^
-            // let b = exprs.Last()
-            // let b = ExprNone
-            // let n = parseExpr()
-            // let e = Up(b, n)
-            // exprs.Add e
-            // e                
         | TokenId.Down -> 
             let n = parseExpr(expressions)
             Down (expressions.Last(), n)
-            // ignore (nextToken())   // ignore _
-            // let b = exprs.Last()
-            // let b = ExprNone
-            // let n = parseExpr()
-            // let e = Down(b, n)
-            // exprs.Add e
-            // e
         | TokenId.Eof -> Eof
         | _ -> failwith $"{(current()).Id} is not implemented"
 
@@ -265,7 +241,3 @@ type Parser(src:string) =
     static member parseExprs (src:string) =
         let parser = Parser(src)
         parser.exprs()
-    // member _.createAST () = 
-    //     for token in tokens do expressions.Add (parseExpr(expressions))
-    //     let root = parseExpr (expressions)
-    //     root
