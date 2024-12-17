@@ -100,15 +100,12 @@ for (i, j) in (compare f6_before f6) do printfn "%s , %s" (string i) (string j)
 
 // check that random fn generation works
 let mutable f2 = FnGeneration.generatefn "f(x)" s' TokenIdProbs.Default 0.91 103.45 40
-while (ExprTree.variables f2).Length < 2 do 
-    // ensure that random generated fn has at least one variable (besides f(x))
-    f2 <- FnGeneration.generatefn "f(x)" s' TokenIdProbs.Default 0.91 103.45 40
 ((ExprTree.variables f2)[1]).Value <- "C_A"   // ensure that specific variable-target exists
 printfn "\n--random generated fn"
 Console.WriteLine(latex f2)
 
 // check the binder and evaluation on ranmdom generated fns
-let res2 = Evaluation.eval maps "C_A" (FnGeneration.fromtex s' f6str)
+let res2 = Evaluation.eval maps "C_A" (FnGeneration.fromTeX s' f6str)
 Console.WriteLine("\n--test evaluation\neval f2: {0}\n", res2)
 
 
@@ -121,7 +118,11 @@ let args: Mutation.OptimizationDesc  = {
     y = yseries
     err = 10    
 }
+
+#time
 let (fret,_) = Mutation.optimizefn args 100 0.10 1000. "C_A" f2
+#time
+
 let res_org = Evaluation.eval maps "f(x)" (Binder.bind f2)
 let res_opt = Evaluation.eval maps "f(x)" (Binder.bind fret)
 printfn "-original  fn  -eval: %g \n %s\n" res_org (latex f2)

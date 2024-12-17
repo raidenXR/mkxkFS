@@ -52,9 +52,9 @@ let [<Literal>] f6str = "z(x) = A_n + A_2 - (C_A * 4.3) / A_1 - 8^2 + t^2"
 let s': Symbols = {constants = cons.Keys; variables = vars.Keys; functions = []}
 
 let fns = Map [
-    "f(x)", (FnGeneration.fromtex s' f0str) 
-    "g(x)", (FnGeneration.fromtex s' f1str)
-    "z(x)", (FnGeneration.fromtex s' f6str)
+    "f(x)", (FnGeneration.fromTeX s' f0str) 
+    "g(x)", (FnGeneration.fromTeX s' f1str)
+    "z(x)", (FnGeneration.fromTeX s' f6str)
 ]
 
 let maps: Maps = {constants = cons; variables = vars; functions = fns}
@@ -68,7 +68,7 @@ let desc: Mutation.OptimizationDesc = {
     maps = maps
     x = x
     y = z  // optimize vs rp0
-    err = 1e3
+    err = 1e-3
 }
 let mutable counter = 1
 let [<Literal>] N = 100 // optimization loop
@@ -83,12 +83,12 @@ let cout (pair:Expr * float) =
     counter <- counter + 1
     pair
 
-let parallel_opt = (Mutation.optimizefn desc N 0.1 1e3 "C_A") >> cout
+let parallel_opt = (Mutation.optimizefn {desc with maps = maps} N 0.1 1e3 "C_A") >> cout
     
 printfn "rng-fn generation #time"
 #time
 let probs = {TokenIdProbs.Default with Pfunction = 15; Pnumber = 5}
-let pipe0 = Array.Parallel.init L (fun _ -> FnGeneration.generatefnEXT "f(x)" s' probs 0.01 1e5 40)
+let pipe0 = Array.Parallel.init L (fun _ -> FnGeneration.generatefn "f(x)" s' probs 0.01 1e5 40)
 #time
 
 printfn "\nrng-fn optimization #time"
@@ -128,11 +128,11 @@ let models = [
     "f3(x)", Model2.createTeXModel maps fns_optimized[2] "C_A" Colors.Blue 2.0f
     "f4(x)", Model2.createTeXModel maps fns_optimized[3] "C_A" Colors.Brown 2.0f
     "f5(x)", Model2.createTeXModel maps fns_optimized[4] "C_A" Colors.Silver 2.0f
-    "f6(x)", Model2.createTeXModel maps fns_optimized[5] "C_A" Colors.Black 2.0f
-    "f7(x)", Model2.createTeXModel maps fns_optimized[6] "C_A" Colors.Olive 2.0f
-    "f8(x)", Model2.createTeXModel maps fns_optimized[7] "C_A" Colors.OrangeRed 2.0f
-    "f9(x)", Model2.createTeXModel maps fns_optimized[8] "C_A" Colors.CornflowerBlue 2.0f
-    "f10(x)", Model2.createTeXModel maps fns_optimized[9] "C_A" Colors.Fuchsia 2.0f
+    // "f6(x)", Model2.createTeXModel maps fns_optimized[5] "C_A" Colors.Black 2.0f
+    // "f7(x)", Model2.createTeXModel maps fns_optimized[6] "C_A" Colors.Olive 2.0f
+    // "f8(x)", Model2.createTeXModel maps fns_optimized[7] "C_A" Colors.OrangeRed 2.0f
+    // "f9(x)", Model2.createTeXModel maps fns_optimized[8] "C_A" Colors.CornflowerBlue 2.0f
+    // "f10(x)", Model2.createTeXModel maps fns_optimized[9] "C_A" Colors.Fuchsia 2.0f
 ]
 
 
