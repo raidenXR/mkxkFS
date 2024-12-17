@@ -232,35 +232,36 @@ module Optimization =
         type Gene = array<string * Variable>
         type Population = array<Gene>
         
-        let vec (maps:Maps) f =
-            variables f
-            |> Array.map (fun x -> x.Value)
-            |> Array.map (fun x -> x,maps.variables[x])
     
-        let population (maps:Maps) f (r:Random) (N:int) :array<Gene> =                
-            let p = Array.init N (fun _ -> vec maps f)
-            for vec in p do
-                for s,v in vec do
+        let population (maps:Maps) f (r:Random) (N:int) :Population =                
+            let population' = Array.init N (fun _ -> 
+                variables f
+                |> Array.filter (fun x -> maps.variables.ContainsKey x.Value)
+                |> Array.map (fun x -> x.Value)
+                |> Array.map (fun x -> x,maps.variables[x])
+            )
+            for gene in population' do
+                for (s,v) in gene do
                     v.V <- ValueSome (v.A + (v.B - v.A) * r.NextDouble())
-            p
+            population'
 
         let fitness (maps:Maps) t f (x:array<float>) (y:array<float>) (population':Population) =
             let n = float x.Length
             let fn = Binder.bind f
             let fit = [|
                 for gene in population' do
+                    for (s,v) in gene do maps.variables[s].V <- v.V                        
                     let mutable err = 0.
                     for yi in y do
-                        for (s,v) in gene do maps.variables[s].V <- v.V                        
                         let yn = Evaluation.eval maps t fn
                         err <- err + (yi - yn) * (yi - yn) / n
                     sqrt err  
             |]
-            let fit' = Array.zip fit population'
-            let pop' = Array.sortBy (fun (fitness_value,_) -> fitness_value) fit'
-            Array.unzip pop'
-            
-
+            population'
+            |> Array.zip fit
+            |> Array.sortBy (fun (fitness_value,_) -> fitness_value)
+            |> Array.unzip
+           
         let mutate (r:Random) (population':Population) =
             for gene in population' do
                 for (s,v) in gene do
@@ -393,36 +394,38 @@ module Mutation =
             for i in 0..N do
                 if i % 2 = 0 && ns.Length > 0 then mutateNumber (pick ns r) lb ub  r
                 if i % 3 = 0 && vs.Length > 0 then mutateVariable (pick vs r) vars fns r
-                if i % 5 = 0 && cs.Length > 0 then mutateConstant (pick cs r) cons r
-                if i % 9 = 0 && us.Length > 0 then mutateUnary (pick us r) uops r
                 if i % 4 = 0 && bs.Length > 0 then mutateBinary (pick bs r) bops r
+                if i % 5 = 0 && cs.Length > 0 then mutateConstant (pick cs r) cons r
+                if i % 6 = 0 && us.Length > 0 then mutateUnary (pick us r) uops r
                 
                 // ensure that targets for evaluation always exists and mutation does not break it
                 if not (vs |> Array.exists (fun x -> x.Value = t)) then vs[r.Next(vs.Length)].Value <- t
 
-                let maps = pars.maps
-                let mutable population = GeneticAlg.population maps fn r 200 
-
                 // genetic alg to compute more accurately the err
-                let mutable genN   = 0
-                let mutable break' = false
-                while genN < 100 && not break' do
-                    let (fitness, population') =
-                        population
-                        |> GeneticAlg.mutate r
-                        |> GeneticAlg.constrain
-                        |> GeneticAlg.crossover r
-                        |> GeneticAlg.fitness maps t f pars.x pars.y
-                    population <- population'
+                // let mutable genN   = 0
+                // let mutable break' = false
+                // while genN < 100 && not break' do
+                //     let (fitness, population') =
+                //         population
+                //         |> GeneticAlg.mutate r
+                //         |> GeneticAlg.constrain
+                //         |> GeneticAlg.crossover r
+                //         |> GeneticAlg.fitness maps t f pars.x pars.y
+                //     population <- population'
                     
-                    if fitness[0] < err0 then
-                        err0 <- fitness[0]
-                        fn_out <- copy fn
-                        // printfn "genalg. iter.: %d,  err: %g" genN err0
+                    // if fitness[0] < err0 then
+                        // err0 <- fitness[0]
+                    //     fn_out <- copy fn
+                    // printfn "genalg. iter.: %d,  err: %g" genN err0
                         
-                    if fitness[0] < pars.err || fitness[0] > 1e2 then
-                        break' <- true
+                //     if fitness[0] < pars.err || fitness[0] > 1e2 then
+                //         break' <- true
                         
-                    genN <- genN + 1
+                //     genN <- genN + 1
+                let population = GeneticAlg.population pars.maps fn r 100
+                let (fitness,_) = GeneticAlg.fitness pars.maps t fn pars.x pars.y population
+                if fitness[0] < err0 then
+                    err0 <- fitness[0]
+                    fn_out <- copy fn
         fn_out, err0       
                 

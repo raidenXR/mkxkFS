@@ -28,7 +28,6 @@ let vars =
         """C_{AB}""", 1, 40
     ] 
     |> List.map (fun (s,a,b) -> s,{A = a; B = b; V = ValueNone})
-    |> Map.ofList
 
 // create some table of constants
 let cons = Map [
@@ -49,7 +48,11 @@ let [<Literal>] f0str = "f(x) = N_A + 4.5 - (C_A * 4.3) / C_B - 8^2"
 let [<Literal>] f1str = "g(x) = T + k_A - (C_A * 4.3) / C_B - t^2"
 let [<Literal>] f6str = "z(x) = A_n + A_2 - (C_A * 4.3) / A_1 - 8^2 + t^2"
 
-let s': Symbols = {constants = cons.Keys; variables = vars.Keys; functions = []}
+let s': Symbols = {
+    constants = cons.Keys 
+    variables = List.map (fun (s,v) -> s) vars
+    functions = []
+}
 
 let fns = Map [
     "f(x)", (FnGeneration.fromTeX s' f0str) 
@@ -57,22 +60,22 @@ let fns = Map [
     "z(x)", (FnGeneration.fromTeX s' f6str)
 ]
 
-let maps: Maps = {constants = cons; variables = vars; functions = fns}
+let maps: Maps = {constants = cons; variables = Map.ofList vars; functions = fns}
 
 // raw points
 let x = Array.init 40 (fun i -> float i)
 let y = Array.init 40 (fun i -> 1e-3 * x[i] * x[i] - 0.3 * x[i] + 1.25)
 let z = Array.init 40 (fun i -> 1e-2 * x[i] * x[i])
 
-let desc: Mutation.OptimizationDesc = {
-    maps = maps
-    x = x
-    y = z  // optimize vs rp0
-    err = 1e-3
-}
+// let desc: Mutation.OptimizationDesc = {
+//     maps = maps
+//     x = x
+//     y = z  // optimize vs rp0
+//     err = 1e-3
+// }
 let mutable counter = 1
 let [<Literal>] N = 100 // optimization loop
-let [<Literal>] L = 1000 // no of rng fns
+let [<Literal>] L = 200 // no of rng fns
 let struct(ci,cj) = Console.GetCursorPosition()
 
 let cout (pair:Expr * float) =
@@ -83,7 +86,19 @@ let cout (pair:Expr * float) =
     counter <- counter + 1
     pair
 
-let parallel_opt = (Mutation.optimizefn {desc with maps = maps} N 0.1 1e3 "C_A") >> cout
+let parallel_opt = 
+    let maps': Maps = {
+        constants = cons
+        variables = Map.ofList vars
+        functions = fns
+    }
+    let desc': Mutation.OptimizationDesc = {
+        maps = maps' 
+        x = x 
+        y = z 
+        err = 1e-2
+    }
+    (Mutation.optimizefn desc' N 0.1 1e3 "C_A") >> cout
     
 printfn "rng-fn generation #time"
 #time
@@ -109,7 +124,7 @@ html
 |> Html.header 2 "constants"
 |> Html.table None ["name"; "value"] [] ([for p in cons -> [$"${p.Key}$"; (string p.Value)]])
 |> Html.header 2 "variables"
-|> Html.table None ["name"; "min"; "max"] [] ([for p in vars -> [$"${p.Key}$"; (string p.Value.A); (string p.Value.B)]])
+|> Html.table None ["name"; "min"; "max"] [] ([for (s,v) in vars -> [$"${s}$"; (string v.A); (string v.B)]])
 |> Html.header 2 "functions"
 |> Html.ulist (List.map (fun x -> $"${x}$") [f0str; f1str; f6str])
 |> Html.header 2 "rng functions"
