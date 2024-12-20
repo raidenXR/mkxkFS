@@ -1,18 +1,22 @@
 namespace MKXK.Optimizations
 open System
+open FSharp.NativeInterop
+#nowarn "9"
 
 
-type Population<'T>(n:int) =
+type Population<'T when 'T:unmanaged>(n:int) =
     let population = Array.zeroCreate<'T> n
     let generation = Array.zeroCreate<int32> n
     let fitness    = Array.zeroCreate<float> n
     let mutable count = 0
     let mutable iteration = 0
+    let len_t = System.Runtime.InteropServices.Marshal.SizeOf<'T>()    
 
     member x.Population = population
     member x.Generation = generation
     member x.Fitness = fitness
     member x.Capacity = n
+    member x.TSize = len_t
     member x.Item
         with get (idx) = population[idx] 
         and set idx value = population[idx] <- value
@@ -20,10 +24,10 @@ type Population<'T>(n:int) =
     member x.Iteration with get() = iteration and set(value) = iteration <- value
 
 
-type GeneticAlg<'T>(n:int, m:int) =
-    let population   = Population(n)
-    let matingpool_a = Population(m)
-    let matingpool_b = Population(m)
+type GeneticAlg<'T when 'T:unmanaged>(n:int, m:int) =
+    let population   = Population<'T>(n)
+    let matingpool_a = Population<'T>(m)
+    let matingpool_b = Population<'T>(m)
     let mutable converged = false
     let mutable n_iteration = 0
     let mutable steps: list<Population<'T> -> unit> = []
@@ -35,10 +39,17 @@ type GeneticAlg<'T>(n:int, m:int) =
 
 
 module Population =
-    let init n (a: 'V -> 'T) (v:'V) =
+    let init n (a: int -> 'T) =
         let p = Population<'T>(n)
-        for i in 0..p.Capacity - 1 do p.Population[i] <- a v
+        p.Count <- n
+        for i in 0..p.Count - 1 do p.Population[i] <- a i
         p
+
+    let iter (f:'T -> unit) (p:Population<'T>) =
+        for i in 0..p.Count - 1 do f p[i]
+
+    let iteri (f:int -> unit) (p:Population<'T>) =
+        for i in 0..p.Count - 1 do f i 
 
     let inline private swap i j (p:Population<'T>) =
         let g0 = p.Generation[i]
@@ -57,51 +68,62 @@ module Population =
 
 
     let sortByGeneration (p:Population<'T>) =
-        for i in 0..p.Capacity - 2 do
-            for j in (i + 1)..p.Capacity - 1 do
+        for i in 0..p.Count - 2 do
+            for j in (i + 1)..p.Count - 1 do
                 if p.Generation[j] > p.Generation[i] then swap i j p
+        p
                     
                     
     let sortByGenerationDescending (p:Population<'T>) =
-        for i in 0..p.Capacity - 2 do
-            for j in (i + 1)..p.Capacity - 1 do
+        for i in 0..p.Count - 2 do
+            for j in (i + 1)..p.Count - 1 do
                 if p.Generation[j] < p.Generation[i] then swap i j p
+        p
 
 
     let sortByFitness (p:Population<'T>) =
-        for i in 0..p.Capacity - 2 do
-            for j in (i + 1)..p.Capacity - 1 do
+        for i in 0..p.Count - 2 do
+            for j in (i + 1)..p.Count - 1 do
                 if p.Fitness[j] > p.Fitness[i] then swap i j p
+        p
 
 
     let sortByFitnessDescending (p:Population<'T>) =
-        for i in 0..p.Capacity - 2 do
-            for j in (i + 1)..p.Capacity - 1 do
+        for i in 0..p.Count - 2 do
+            for j in (i + 1)..p.Count - 1 do
                 if p.Fitness[j] < p.Fitness[i] then swap i j p
+        p
 
 
     let constrain (cons:'T -> 'T) (p:Population<'T>) =
-        for i in 0..p.Capacity - 1 do p.Population[i] <- cons p.Population[i]
+        for i in 0..p.Count - 1 do p.Population[i] <- cons p.Population[i]
+        p
 
     let fitness (fit:'T -> float) (p:Population<'T>) =
-        for i in 0..p.Capacity - 1 do p.Fitness[i] <- fit p.Population[i]
+        for i in 0..p.Count - 1 do p.Fitness[i] <- fit p.Population[i]
+        p
 
     
 // type selection
 
 module Mutation =
-    open System.Runtime.InteropServices
-    open System.Runtime.CompilerServices
-    open FSharp.NativeInterop
-
     let private r = Random()
+
+    /// define a custom function for mutating the population
+    let mutate occ (mut:'T -> 'T) (p:Population<'T>) =
+        for i in 0..p.Count - 1 do
+            match r.NextDouble() with
+            | d when d < occ -> p[i] <- mut p[i]
+            | _ -> ()
+        p
+            
     
-    let bitflip occ (conv: 'T -> voidptr * int) (p:Population<'T>) = 
-        for i in 0..p.Capacity - 1 do
+    let bitflip occ (p:Population<'T>) = 
+        for i in 0..p.Count - 1 do
             match r.NextDouble() with
             | d when d < occ -> 
-                let ptr,len = conv p[i]
-                let span = Span<float>(ptr, len)
+                use ptr = fixed &p.Population[i]
+                let span = Span<byte>(NativePtr.toVoidPtr ptr, p.TSize)
                 let mut =         
                     match r.Next(7) with
                     | 0 -> 0b000_0001
@@ -114,30 +136,32 @@ module Mutation =
                     | _ -> 0b000_0000
                     |> byte
                 let idx = r.Next(span.Length)
-                let span = MemoryMarshal.AsBytes span
                 span[idx] <- span[idx] &&& mut
             | _ -> ()     
+        p
 
 
-    let random occ (conv: 'T -> 'T) (p:Population<'T>) =
-        for i in 0..p.Capacity - 1 do
+    let random occ (p:Population<'T>) =
+        for i in 0..p.Count - 1 do
             match r.NextDouble() with 
-            | d when d < occ -> p[i] <- conv p[i]
+            | d when d < occ ->
+                use ptr = fixed &p.Population[i]
+                let span = Span<byte>(NativePtr.toVoidPtr ptr, p.TSize)
+                r.NextBytes(span)
             | _ -> ()    
+        p
 
 
-    let scramble occ (conv:array<'T> * int -> struct(nativeint * int)) (p:Population<'T>) =
-        for i in 0..p.Capacity - 1 do
+    let scramble occ (p:Population<'T>) =
+        for i in 0..p.Count - 1 do
             match r.NextDouble() with
             | d when d < occ ->
-                let struct(ptr, len) = conv(p.Population, i)
-                let span = Span(ptr.ToPointer(), len)
-                let mutable mut = r.NextInt64()
-                let idx = r.Next(span.Length - 4)
-                let span0 = MemoryMarshal.AsBytes span
-                let span1 = Span<byte>(Unsafe.AsPointer(&mut), Marshal.SizeOf<int64>())
-                span1.CopyTo(span0.Slice(idx))
+                use ptr = fixed &p.Population[i]
+                let span = Span<byte>(NativePtr.toVoidPtr ptr, p.TSize)
+                let idx = r.Next(p.TSize - 8)
+                r.NextBytes(span.Slice(idx,8))
             | _ -> ()
+        p
             
 
     let swap occ (p:Population<'T>) = 
@@ -151,16 +175,35 @@ module Mutation =
 module Crossover =
     let private r = Random()
 
-    let onepoint (conv:'T -> voidptr * int) (a:Population<'T>) (b:Population<'T>) =
-        let len = min a.Capacity b.Capacity
+    let inline private stackalloc<'a when 'a: unmanaged> (length: int): Span<'a> =
+        let p = NativePtr.stackalloc<'a> length |> NativePtr.toVoidPtr
+        Span<'a>(p, length)
+
+    /// a: MatingPool, b: Population
+    let crossover (f: 'T * 'T -> 'T * 'T) (a:Population<'T>) (b:Population<'T>) =
+        let len = if a.Count % 2 = 0 then a.Count else a.Count - 1
+        for i in 0..2..len - 1 do
+            let pA = a[i + 0]
+            let pB = a[i + 1]
+            let (cA,cB) = f (pA,pB)
+            b[i + 0] <- cA
+            b[i + 1] <- cB
+        b
+            
+
+    let onepoint (a:Population<'T>) (b:Population<'T>) =
+        let len = min a.Count b.Count
+        use a' = fixed &a.Population[0]
+        use b' = fixed &b.Population[0]
+        
         for i in 0..len - 1 do
-            let ptr_a,len_a = conv a[i]
-            let ptr_b,len_b = conv b[i]
-            let span_a = Span(ptr_a, len_a)
-            let span_b = Span(ptr_b, len_b)
-            let idx = r.Next(span_b.Length - 1)        
+            let ptr_a = NativePtr.add a' i |> NativePtr.toVoidPtr
+            let ptr_b = NativePtr.add b' i |> NativePtr.toVoidPtr
+            let span_a = Span<byte>(ptr_a, a.TSize)
+            let span_b = Span<byte>(ptr_b, b.TSize)
+            let idx = r.Next(a.TSize - 8)        
             let A = idx - 1
-            let B = span_a.Length - 1
+            let B = b.TSize - 1
             for i in 0..A do span_a[i] <- span_b[i]
             for j in A..B do span_b[j] <- span_a[j]
             
@@ -169,33 +212,41 @@ module Crossover =
         failwith "Crossover.multipoint is not implemented yet"
             
 
-    let uniform occ (conv:'T -> voidptr * int) (a:Population<'T>) (b:Population<'T>) =
-        let len = min a.Capacity b.Capacity
+    let uniform (a:Population<'T>) (b:Population<'T>) =
+        let len = min a.Count b.Count
+        let size = a.TSize / 8
+        use a' = fixed &a.Population[0]
+        use b' = fixed &b.Population[0]
+
         for i in 0..len - 1 do
-            let ptr_a,len_a = conv a[i]
-            let ptr_b,len_b = conv b[i]
-            let span_a = Span(ptr_a, len_a)
-            let span_b = Span(ptr_b, len_b)
-            let span_len = min span_a.Length span_b.Length
-            for j in 0..span_len - 1 do
+            let ptr_a = NativePtr.add a' i |> NativePtr.toVoidPtr
+            let ptr_b = NativePtr.add b' i |> NativePtr.toVoidPtr
+            let span_a = Span<float>(ptr_a, size)
+            let span_b = Span<float>(ptr_b, size)
+
+            for j in 0..size - 1 do    // offset 8-bytes stride
                 match r.NextDouble() with
-                | d when d < occ ->
+                | d when d < 0.5 ->
                     let ga = span_a[j]
-                    let gb = span_b[j]
+                    let gb = span_b[j]                   
                     span_a[j] <- gb
                     span_b[j] <- ga
                 | _ -> ()
 
 
-    let arithmetic cf (conv:'T -> voidptr * int) (a:Population<'T>) (b:Population<'T>) =
-        let len = min a.Capacity b.Capacity
+    let arithmetic cf (a:Population<'T>) (b:Population<'T>) =
+        let len = min a.Count b.Count
+        let size = a.TSize / 8
+        use a' = fixed &a.Population[0]
+        use b' = fixed &b.Population[0]
+
         for i in 0..len - 1 do
-            let ptr_a,len_a = conv a[i]
-            let ptr_b,len_b = conv b[i]
-            let span_a = Span(ptr_a, len_a)
-            let span_b = Span(ptr_b, len_b)
-            let span_len = min span_a.Length span_b.Length
-            for j in 0..span_len - 1 do
+            let ptr_a = NativePtr.add a' i |> NativePtr.toVoidPtr
+            let ptr_b = NativePtr.add b' i |> NativePtr.toVoidPtr
+            let span_a = Span<float>(ptr_a, size)
+            let span_b = Span<float>(ptr_b, size)
+
+            for j in 0..size - 1 do
                 let ga = cf * span_a[j] + (1. - cf) * span_b[j]
                 let gb = cf * span_b[j] * (1. - cf) * span_a[j]
                 span_a[j] <- gb
@@ -205,13 +256,19 @@ module Crossover =
 module Selection =
     let private r = Random()
 
+    /// b: MatingPool, a: OriginalPopulation
     let proportional (a:Population<'T>) (b:Population<'T>) =
-        let indices = [|0..a.Capacity - 1|]
-        Random.Shared.Shuffle indices
-        let indices = indices[0..indices.Length / 2]
-        for i in 0..indices.Length - 1 do b[i] <- a[indices[i]]
+        let len = min a.Count b.Capacity
+        let mutable count = 0
+        let indices = [|0..a.Count - 1|]
+        r.Shuffle indices
+        for i in 0..len - 1 do 
+            b[i] <- a[indices[i]]
+            count <- count + 1
+        b.Count <- count
+        b
 
-
+    /// b: MatingPool, a: OriginalPopulation
     let roulettewheel (a:Population<'T>) (b:Population<'T>) =
         let indices = ResizeArray []
         let f_min = Array.min a.Fitness
@@ -225,31 +282,42 @@ module Selection =
                     count <- count + 1
         for i in 0..count - 1 do
             b[i] <- a[indices[i]]
+        b.Count <- count
+        b
 
 
     let stochasticUniversalSampling (a:Population<'T>) (b:Population<'T>) =
         failwith "Selection.stochasticUniversalSampling is not yet implemented"
         
-
+    /// b: MatingPool, a: OriginalPopulation
     let tournament (a:Population<'T>) (b:Population<'T>) =
-        let mutable n = 0
+        let mutable count = 0
         let indices = [|0..a.Capacity - 1|]
         Random.Shared.Shuffle indices
         for i in 0..2..a.Capacity - 1 do
             let idx0 = indices[i + 0]
             let idx1 = indices[i + 1]
-            if a.Fitness[idx0] > a.Fitness[idx1] then b[n] <- a[idx0] else b[n] <- a[idx1]
-            n <- n + 1
+            if a.Fitness[idx0] > a.Fitness[idx1] then b[count] <- a[idx0] else b[count] <- a[idx1]
+            count <- count + 1
+        b.Count <- count
+        b
             
-
+    /// b: MatingPool, a: OriginalPopulation
     let rank (a:Population<'T>) (b:Population<'T>) =
          failwith "Selection.rank is not implemented yet"
 
-
+    /// b: MatingPool, a: OriginalPopulation
     let random (a:Population<'T>) (b:Population<'T>) =
-        let len = a.Capacity / 2
-        let indices = Array.randomSample len [|0..a.Capacity|]
-        for i in 0..indices.Length - 1 do b[i] <- a[indices[i]]        
+        let len = min a.Count b.Capacity
+        let mutable count = 0
+        for i in 0..a.Count - 1 do
+            match r.NextDouble() with
+            | d when d < 0.8 && count < b.Capacity -> 
+                b[count] <- a[i]
+                count <- count + 1
+            | _ -> ()
+        b.Count <- count
+        b
 
 
 module Termination =
