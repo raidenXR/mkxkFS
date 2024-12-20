@@ -320,3 +320,15 @@ module Typesetting =
         use image = surface.Snapshot()
         use data = image.Encode(SKEncodedImageFormat.Png, 80)
         data.SaveTo(stream)
+
+    /// renders an error image in case parsing fails
+    let errorImg (stream:System.IO.Stream) =
+        let info = new SKImageInfo(320,60)
+        use surface = SKSurface.Create(info)
+        use canvas = surface.Canvas
+        paint.Color <- SKColors.Red
+        canvas.DrawText("ERROR in parsing exprs", SKPoint(5f,55f), paint)
+        paint.Color <- SKColors.Black
+        use image = surface.Snapshot()
+        use data = image.Encode(SKEncodedImageFormat.Png, 80)
+        data.SaveTo(stream)

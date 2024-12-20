@@ -12,6 +12,7 @@
     <Compile Include="src/Lexer.fs" />
     <Compile Include="src/Parser.fs" />
     <Compile Include="src/FnGenerator.fs" />
+    <Compile Include="src/optimizations.fs" />
   </ItemGroup>
 
   <ItemGroup>
