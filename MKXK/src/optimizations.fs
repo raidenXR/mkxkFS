@@ -22,6 +22,15 @@ type Population<'T when 'T:unmanaged>(n:int) =
         and set idx value = population[idx] <- value
     member x.Count with get() = count and set(value) = count <- min value n
     member x.Iteration with get() = iteration and set(value) = iteration <- value
+    member x.GetSlice(start, finish) = 
+        let start = defaultArg start 0
+        let finish = defaultArg finish count
+        let p = Population<'T>(finish - start)
+        Array.Copy(x.Population, p.Population, finish - start)
+        Array.Copy(x.Generation, p.Generation, finish - start)
+        Array.Copy(x.Fitness, p.Fitness, finish - start)
+        p.Count <- finish - start
+        p
 
 
 type GeneticAlg<'T when 'T:unmanaged>(n:int, m:int) =
@@ -30,11 +39,11 @@ type GeneticAlg<'T when 'T:unmanaged>(n:int, m:int) =
     let matingpool_b = Population<'T>(m)
     let mutable converged = false
     let mutable n_iteration = 0
-    let mutable steps: list<Population<'T> -> unit> = []
+    // let mutable steps: list<'a -> Population<'T>> = []
 
-    member x.Run() =
-        while not converged do
-            for step in steps do step population
+    member x.Run(max_iterations:int) =
+        while not converged && n_iteration < max_iterations do
+            // for step in steps do step
             n_iteration <- n_iteration + 1
 
 
@@ -45,11 +54,15 @@ module Population =
         for i in 0..p.Count - 1 do p.Population[i] <- a i
         p
 
+    let zeroCreate<'T when 'T:unmanaged> n =
+        let p = Population<'T>(n)
+        p
+
     let iter (f:'T -> unit) (p:Population<'T>) =
         for i in 0..p.Count - 1 do f p[i]
 
-    let iteri (f:int -> unit) (p:Population<'T>) =
-        for i in 0..p.Count - 1 do f i 
+    let iteri (f:int -> Population<'T> -> unit) (p:Population<'T>) =
+        for i in 0..p.Count - 1 do f i p
 
     let inline private swap i j (p:Population<'T>) =
         let g0 = p.Generation[i]
@@ -103,20 +116,38 @@ module Population =
         for i in 0..p.Count - 1 do p.Fitness[i] <- fit p.Population[i]
         p
 
-    
-// type selection
-
-module Mutation =
-    let private r = Random()
-
     /// define a custom function for mutating the population
     let mutate occ (mut:'T -> 'T) (p:Population<'T>) =
         for i in 0..p.Count - 1 do
-            match r.NextDouble() with
+            match Random.Shared.NextDouble() with
             | d when d < occ -> p[i] <- mut p[i]
             | _ -> ()
         p
-            
+        
+    /// a: MatingPool, b: Population -> Population
+    let crossover (f: 'T * 'T -> 'T * 'T) (a:Population<'T>) (b:Population<'T>) =
+        let len = if a.Count % 2 = 0 then a.Count else a.Count - 1
+        for i in 0..2..len - 1 do
+            let pA = a[i + 0]
+            let pB = a[i + 1]
+            let (cA,cB) = f (pA,pB)
+            b[i + 0] <- cA
+            b[i + 1] <- cB
+        b
+
+    /// a: MatingPool, b: Population -> Population
+    let select (a:Population<'T>) (b:Population<'T>) =
+        let mutable count = 0
+        for i in 0..b.Count - 1 do
+            if Random.Shared.NextDouble() > float i / float b.Count then
+                a[count] <- b[i]
+                count <- count + 1
+        a.Count <- count
+        b
+    
+
+module Mutation =
+    let private r = Random()            
     
     let bitflip occ (p:Population<'T>) = 
         for i in 0..p.Count - 1 do
@@ -179,18 +210,7 @@ module Crossover =
         let p = NativePtr.stackalloc<'a> length |> NativePtr.toVoidPtr
         Span<'a>(p, length)
 
-    /// a: MatingPool, b: Population
-    let crossover (f: 'T * 'T -> 'T * 'T) (a:Population<'T>) (b:Population<'T>) =
-        let len = if a.Count % 2 = 0 then a.Count else a.Count - 1
-        for i in 0..2..len - 1 do
-            let pA = a[i + 0]
-            let pB = a[i + 1]
-            let (cA,cB) = f (pA,pB)
-            b[i + 0] <- cA
-            b[i + 1] <- cB
-        b
-            
-
+          
     let onepoint (a:Population<'T>) (b:Population<'T>) =
         let len = min a.Count b.Count
         use a' = fixed &a.Population[0]
