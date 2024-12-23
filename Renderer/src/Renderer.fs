@@ -16,7 +16,6 @@ open Avalonia.FuncUI.DSL
 open Avalonia.Layout
 
 
-// type Renderer(constants:Map<string,float>, variables:Map<string,Variable>, functions:Map<string,Binder.BoundExpr>, models:list<Model2.Model>) =
 type Renderer(maps:Maps, models:list<Model2.Model>) =
     let mutable wnd: Window = null
     let mutable thread: System.Threading.Thread = null    
@@ -44,7 +43,6 @@ type Renderer(maps:Maps, models:list<Model2.Model>) =
                 | :? IClassicDesktopStyleApplicationLifetime as desktop -> wnd <- desktop.MainWindow
                 | _ -> ()
                 
-        // Avalonia.Threading.Dispatcher.UIThread.Invoke (fun _ -> wnd.Content <- Views.view2(constants, variables, functions, models))
         Avalonia.Threading.Dispatcher.UIThread.Invoke (fun _ -> wnd.Content <- Views.view2(maps, models))
 
 

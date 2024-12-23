@@ -522,7 +522,6 @@ module Views =
         inherit HostWindow()
         do
             base.Title <- "MKXK"
-            // base.Content <- view2()
         
 
     type App() =

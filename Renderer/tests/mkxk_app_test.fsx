@@ -67,15 +67,9 @@ let x = Array.init 40 (fun i -> float i)
 let y = Array.init 40 (fun i -> 1e-3 * x[i] * x[i] - 0.3 * x[i] + 1.25)
 let z = Array.init 40 (fun i -> 1e-2 * x[i] * x[i])
 
-// let desc: Mutation.OptimizationDesc = {
-//     maps = maps
-//     x = x
-//     y = z  // optimize vs rp0
-//     err = 1e-3
-// }
 let mutable counter = 1
-let [<Literal>] N = 100 // optimization loop
-let [<Literal>] L = 200 // no of rng fns
+let [<Literal>] N = 300                             // optimization loop
+let [<Literal>] L = 1000                           // no of rng fns
 let struct(ci,cj) = Console.GetCursorPosition()
 
 let cout (pair:Expr * float) =
@@ -112,7 +106,7 @@ let (fns_optimized, errs) =
     pipe0
     |> Array.Parallel.map parallel_opt
     |> Array.sortBy (fun (f,err) -> err)
-    |> Array.takeWhile (fun (f,err) -> err < 3)
+    |> Array.take 10
     |> Array.map (fun (x,y) -> latex x, y)
     |> Array.unzip
 #time

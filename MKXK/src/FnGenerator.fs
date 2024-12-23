@@ -49,7 +49,6 @@ type TokenIdProbs = {
 
 module FnGeneration =
     type FnGenerator(symbols:Symbols, probs:TokenIdProbs, lbound:float, ubound:float, maxcount: int) =
-    // type FnGenerator(constants:seq<string>, variables:seq<string>, functions:seq<string>, lbound:float, ubound:float, maxcount: int) =
         let cons = Array.ofSeq symbols.constants
         let vars = Array.ofSeq symbols.variables
         let fns  = Array.ofSeq symbols.functions
@@ -217,88 +216,36 @@ module FnGeneration =
     /// parses a BoundExpr from a tex-string
     let fromTeX (symbols:Symbols) (tex:string) = Binder.bind (Parser.parse symbols tex)
 
-    // [<Obsolete>]
-    // let generatefnEXT fn_name (symbols:Symbols) (probs:TokenIdProbs) lbound ubound maxnodes :Expr = 
-    //     let mutable fn = generatefn fn_name symbols probs lbound ubound maxnodes
-    //     while (ExprTree.variablesAll fn).Length < 2 do
-    //         fn <- generatefn fn_name symbols probs lbound ubound maxnodes
-    //     fn
 
+module RMSE =
+    let ofArrays (Y0:array<float>) (Y1:array<float>) =
+        let mutable err = 0.
+        for (y0,y1) in Array.zip Y0 Y1 do
+            err <- err + (y0 - y1) * (y0 - y1) / float Y0.Length
+        sqrt err
 
+    let ofExpr (m:Maps) f t (pts:array<float * float>) =
+        let fn = Binder.bind f
+        let mutable err = 0.
+        for (x,y) in pts do
+            m.variables[t].V <- ValueSome x
+            let yn = Evaluation.eval m t fn
+            err <- err + (y - yn) * (y - yn) / float pts.Length
+        sqrt err
 
-module Optimization =
-    module GeneticAlg =
+    /// for a given N-size it computes the smallest err for random variables-values over some f
+    let ofExprOverNSamples (m:Maps) f t (pts:array<float * float>) (N:int) =
+        let lerp (v:Variable) = ValueSome (v.A + (v.B - v.A) * Random.Shared.NextDouble())
+        let vars_strs = variables f |> Array.map (fun x -> x.Value) |> Array.filter (fun x -> m.variables.ContainsKey x)
+        let errs = Array.zeroCreate<float> N
+        for i in 0..N - 1 do 
+            for s in vars_strs do m.variables[s].V <- lerp m.variables[s]  // give a random value to each Variable
+            errs[i] <- ofExpr m f t pts                                   // compute the rmse
+        Array.min errs            
 
-        type Gene = array<string * Variable>
-        type Population = array<Gene>
-        
     
-        let population (maps:Maps) f (r:Random) (N:int) :Population =                
-            let population' = Array.init N (fun _ -> 
-                variables f
-                |> Array.filter (fun x -> maps.variables.ContainsKey x.Value)
-                |> Array.map (fun x -> x.Value)
-                |> Array.map (fun x -> x,maps.variables[x])
-            )
-            for gene in population' do
-                for (s,v) in gene do
-                    v.V <- ValueSome (v.A + (v.B - v.A) * r.NextDouble())
-            population'
-
-        let fitness (maps:Maps) t f (x:array<float>) (y:array<float>) (population':Population) =
-            let n = float x.Length
-            let fn = Binder.bind f
-            let fit = [|
-                for gene in population' do
-                    for (s,v) in gene do maps.variables[s].V <- v.V                        
-                    let mutable err = 0.
-                    for yi in y do
-                        let yn = Evaluation.eval maps t fn
-                        err <- err + (yi - yn) * (yi - yn) / n
-                    sqrt err  
-            |]
-            population'
-            |> Array.zip fit
-            |> Array.sortBy (fun (fitness_value,_) -> fitness_value)
-            |> Array.unzip
-           
-        let mutate (r:Random) (population':Population) =
-            for gene in population' do
-                for (s,v) in gene do
-                    match r.NextDouble() with
-                    | p when p < 0.5 -> v.V <- ValueSome (v.A + (v.B - v.A) * r.NextDouble()) 
-                    | p when p > 0.5 -> v.V <- ValueSome (v.B - (v.B - v.A) * r.NextDouble())
-                    | _ -> v.V <- ValueSome ((v.B - v.A) * r.NextDouble() + v.A) 
-            population'
-
-        let constrain (population':Population) =
-            for gene in population' do
-                for (s,v) in gene do
-                    match v.V with
-                    | ValueSome V ->
-                        if V < v.A then v.V <- ValueSome v.A
-                        if V > v.B then v.V <- ValueSome v.B
-                    | ValueNone -> v.V <- ValueSome (v.A + (v.B - v.A) * 0.5)
-            population'
-
-
-        let crossover (r:Random) (population':Population) = 
-            let gene_crossover (a:Gene) (b:Gene) (r:Random) = 
-                let idx = r.Next(a.Length)
-                for i in 0..idx - 1 do a[i] <- b[i]
-                for i in idx..a.Length - 1 do b[i] <- a[i]
-
-            let idx = population'.Length / 2
-            for i in 0..idx - 1 do
-                let a = population'[i + 0]
-                let b = population'[i + idx]
-                gene_crossover a b r
-            population'
-
-        
 module Mutation =
     open ExprTree
-    open Optimization
 
     type OptimizationDesc = {
         maps: Maps
@@ -322,28 +269,6 @@ module Mutation =
             Some f
         else None
 
-
-    let rmse (maps:Maps) (t:string) (f:Binder.BoundExpr) (x:array<float>) (y:array<float>) = 
-        let v = maps.variables
-        let n = float y.Length
-        let mutable err = 0.0
-        
-        for (xi,yi) in Array.zip x y do
-            if xi >= v[t].A && xi <= v[t].B then
-                v[t].V <- ValueSome xi
-                let yn = Evaluation.eval maps t f
-                err <- err + (yi - yn) * (yi - yn) / n
-        sqrt err 
-        
-    // [<Obsolete>]
-    // let private rmse (a:array<float>) (b:array<float>) =
-    //     let mutable err = 0.
-    //     let n = min a.Length b.Length
-    //     let t = float n
-    //     for i in 0..n - 1 do
-    //         let dy = a[i] - b[i]
-    //         err <- err + (dy * dy / t)
-    //     sqrt err
 
     // #########################################################
     // ONLY the nodes that containt ref<values> matter to mutate!!!
@@ -378,7 +303,7 @@ module Mutation =
     
         let fn = copy f        // copy of f to mutate, the original f is not mutated
         let mutable fn_out = copy f
-        let mutable err0 = Double.MaxValue
+        let mutable err = Double.MaxValue
 
         let ns = numbers fn
         let cs = constants fn
@@ -389,6 +314,7 @@ module Mutation =
 
         let uops = [|Plus; Minus; Log; Ln; Exp; Sqrt|]
         let bops = [|Plus; Minus; Star; Cdot; Slash; Accent|]
+        let pts  = Array.zip pars.x pars.y
 
         if vs.Length > 0 then
             for i in 0..N do
@@ -400,32 +326,11 @@ module Mutation =
                 
                 // ensure that targets for evaluation always exists and mutation does not break it
                 if not (vs |> Array.exists (fun x -> x.Value = t)) then vs[r.Next(vs.Length)].Value <- t
-
-                // genetic alg to compute more accurately the err
-                // let mutable genN   = 0
-                // let mutable break' = false
-                // while genN < 100 && not break' do
-                //     let (fitness, population') =
-                //         population
-                //         |> GeneticAlg.mutate r
-                //         |> GeneticAlg.constrain
-                //         |> GeneticAlg.crossover r
-                //         |> GeneticAlg.fitness maps t f pars.x pars.y
-                //     population <- population'
-                    
-                    // if fitness[0] < err0 then
-                        // err0 <- fitness[0]
-                    //     fn_out <- copy fn
-                    // printfn "genalg. iter.: %d,  err: %g" genN err0
-                        
-                //     if fitness[0] < pars.err || fitness[0] > 1e2 then
-                //         break' <- true
-                        
-                //     genN <- genN + 1
-                let population = GeneticAlg.population pars.maps fn r 100
-                let (fitness,_) = GeneticAlg.fitness pars.maps t fn pars.x pars.y population
-                if fitness[0] < err0 then
-                    err0 <- fitness[0]
+                
+                let rmse = RMSE.ofExprOverNSamples pars.maps fn t pts 20
+                // let rmse = RMSE.ofExpr pars.maps fn t pts
+                if rmse < err then
+                    err <- rmse
                     fn_out <- copy fn
-        fn_out, err0       
+        fn_out, err       
                 
