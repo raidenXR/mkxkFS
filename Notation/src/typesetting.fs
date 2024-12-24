@@ -154,8 +154,12 @@ module Typesetting =
                 let w = max u_size.w d_size.w
                 let h = u_size.h + d_size.h
                 {w = w; h = h}
-            | Over _ 
-            | Under _
+            | Over (e,o) ->
+                let e_size = size e s
+                {w = e_size.w; h = e_size.h + 0.2f * s * fontsize}
+            | Under (e,u) ->
+                let e_size = size e s
+                {w = e_size.w; h = e_size.h + 0.2f * s * fontsize}
             | Underover _ ->
                 failwith "Over, under, underover not implemented yet"
             | Scaled (str,e) ->
@@ -197,10 +201,12 @@ module Typesetting =
             | Down (e,d) ->
                 let d_size = size d (0.8f * s)
                 {dy1 = 0f; dy2 = -d_size.h * 0.3f}
-            | Downup _
-            | Over _
-            | Under _
-            | Underover _
+            | Over (e,o) ->
+                let hb = hbox e s
+                {dy1 = hb.dy1 + 0.2f * s * fontsize; dy2 = hb.dy2}
+            | Under (e,u) ->
+                let hb = hbox e s
+                {dy1 = hb.dy1; dy2 = hb.dy2 + 0.2f * s * fontsize}
             | Scaled _ ->
                 failwith "not implemented yet"
             | _ -> failwith $"{string expr} is not implemented yet"                    
@@ -276,10 +282,15 @@ module Typesetting =
             let mutable pt0 = Vector2(pt.X, pt.Y - 0.3f * d_size.h)
             typeset d &pt0 (0.8f * s) canvas r  
             pt.X <- pt.X + d_size.w
-        | Downup _
-        | Over _
-        | Under _
-        | Underover _
+        // | Downup _
+        | Over (e,o) ->
+            let mutable pt0 = Vector2(pt.X, pt.Y + binoffset)
+            typeset o &pt0 s canvas r
+            typeset e &pt s canvas r
+        | Under (e,u) ->
+            let mutable pt0 = Vector2(pt.X, pt.Y - binoffset)
+            typeset u &pt0 s canvas r
+            typeset e &pt s canvas r
         | Scaled _ ->
             failwith "not implemented yet"
         | _ -> failwith $"{string expr} is not implemented yet"

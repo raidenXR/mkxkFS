@@ -102,11 +102,10 @@ type Lexer(src: string) =
                     // Console.WriteLine next_word
 
                     if diacriticals.ContainsKey next_word then
-                        let e = diacriticals[next_word] (Expr.Text "")
-                        match e with
+                        match diacriticals[next_word] (Expr.Identifier "a") with
                         | Over _ -> Token(pos, next_word, TokenId.Over)
                         | Under _ -> Token(pos, next_word, TokenId.Under)
-                        | _ -> failwith ("invalid case in diacritical " + next_word)
+                        | _ -> failwith ("invalid case in diacritical: " + next_word)
                         
                     elif scalers.ContainsKey next_word then
                         Token(pos, next_word, TokenId.Scaled)
@@ -181,8 +180,6 @@ type Parser(src:string) =
         match token.Id with
         | TokenId.Number -> Number (token.Str)
         | TokenId.Identifier -> Identifier (token.Str)
-        | TokenId.Over 
-        | TokenId.Under 
         | TokenId.Space -> failwith "Over, Under not implemented yet"
         | TokenId.Scaled -> 
             let s = scalers[token.Str]
@@ -222,6 +219,10 @@ type Parser(src:string) =
         | TokenId.Down -> 
             let n = parseExpr(expressions)
             Down (expressions.Last(), n)
+        | TokenId.Over
+        | TokenId.Under ->
+            // Console.WriteLine("diacrital:{0}", token.Str)
+            diacriticals[token.Str] (parseExpr(expressions))
         | TokenId.Eof -> Eof
         | _ -> failwith $"{(current()).Id} is not implemented"
 
