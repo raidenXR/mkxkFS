@@ -17,7 +17,7 @@ open Avalonia.FuncUI.DSL
 open Avalonia.Layout
 
 module Converter =
-    open NotationFS
+    open Notation
     open System.Linq
 
     let ms = new System.IO.MemoryStream(8 * 1024)

@@ -1,4 +1,5 @@
-namespace NotationFS
+namespace Notation
+
 open System
 open System.Collections.Generic
 open System.Linq

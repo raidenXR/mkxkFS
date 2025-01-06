@@ -15,11 +15,11 @@ open System
 open MKXK
 open SkiaSharp
 open SKCharts
-open SKCharts.Avalonia
+
 
 
 module Converter =
-    open NotationFS
+    open Notation
     open System.Linq
 
     let ms = new System.IO.MemoryStream(8 * 1024)
@@ -49,49 +49,74 @@ module Converter =
 module Model2 =
     
     type Model = 
-        | TeXModel of string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2D
-        | Model2D of SKCharts.Model2D
+        | TeXModel of string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2
+        | Model2 of SKCharts.Model2
+
+        with member x.Name 
+                with get() =
+                    match x with
+                    | TeXModel (s,f,b,m) -> m.name
+                    | Model2 m -> m.name
+                and set(value) = 
+                    match x with
+                    | TeXModel (s,f,b,m) -> m.name <- value
+                    | Model2 m -> m.name <- value
 
     
     let createpoints x y (c:Colors) s =
-        let m = SKCharts.Model2D.CreatePoints(x, y, SKColor(uint c))
-        m.Paint.StrokeWidth <- s
-        Model2D m
+        let pts = Array.zip x y 
+        let m = SKCharts.Model2.create Points pts (SKColor(uint c))
+        Model2 m
 
     let createline x y (c:Colors) s =
-        let m = SKCharts.Model2D.CreateLine(x, y, SKColor(uint c))
-        m.Paint.StrokeWidth <- s
-        Model2D m
+        let pts = Array.zip x y
+        let m = SKCharts.Model2.create Line pts (SKColor(uint c))
+        Model2 m
 
-    let evalModel (m:Maps) t f (model:SKCharts.Model2D) :unit =
-        let xvalues = model.Xvalues
-        let yvalues = model.Yvalues
-        let N = xvalues.Length
-        let n = N / 2 + 1
-        let dx = (m.variables[t].B - m.variables[t].A) / float n
+    // let evalModel (m:Maps) t f (model:SKCharts.Model2) :unit =
+    //     let xvalues = model.xvalues
+    //     let yvalues = model.yvalues
+    //     let N = xvalues.Length
+    //     let n = N / 2 + 1
+    //     let dx = (m.variables[t].B - m.variables[t].A) / float n
 
-        let mutable x = m.variables[t].A
-        m.variables[t].V <- ValueSome x
-        xvalues[0] <- x
-        yvalues[0] <- Evaluation.eval m t f
+    //     let mutable x = m.variables[t].A
+    //     m.variables[t].V <- ValueSome x
+    //     xvalues[0] <- x
+    //     yvalues[0] <- Evaluation.eval m t f
 
-        let mutable i = 1
-        while i + 1 < N do
-            x <- x + dx
+    //     let mutable i = 1
+    //     while i + 1 < N do
+    //         x <- x + dx
+    //         m.variables[t].V <- ValueSome x
+    //         let y = Evaluation.eval m t f
+    //         xvalues[i + 0] <- x
+    //         xvalues[i + 1] <- x 
+    //         yvalues[i + 0] <- y
+    //         yvalues[i + 1] <- y 
+    //         i <- i + 2
+
+    //     x <- m.variables[t].B
+    //     m.variables[t].V <- ValueSome x
+    //     xvalues[xvalues.Length - 1] <- x
+    //     yvalues[yvalues.Length - 1] <- (Evaluation.eval m t f)           
+
+
+    let evalModel (m:Maps) t f (model:SKCharts.Model2) :unit =
+        let xvalues = model.xvalues
+        let yvalues = model.yvalues
+        let A = m.variables[t].A
+        let B = m.variables[t].B
+        let dx = (B - A) / (float xvalues.Length)
+        let mutable x = A
+        let mutable i = 0
+        
+        while x < B do
             m.variables[t].V <- ValueSome x
-            let y = Evaluation.eval m t f
-            xvalues[i + 0] <- x
-            xvalues[i + 1] <- x 
-            yvalues[i + 0] <- y
-            yvalues[i + 1] <- y 
-            i <- i + 2
-
-        x <- m.variables[t].B
-        m.variables[t].V <- ValueSome x
-        xvalues[xvalues.Length - 1] <- x
-        yvalues[yvalues.Length - 1] <- (Evaluation.eval m t f)           
-        model.UpdateBounds()
-
+            xvalues[i] <- x
+            yvalues[i] <- Evaluation.eval m t f    
+            x <- x + dx
+        
 
     let createTeXModel (maps:Maps) tex t c s :Model =
         let s': Symbols = {
@@ -104,7 +129,7 @@ module Model2 =
         let x = Array.zeroCreate<float> 100
         let y = Array.zeroCreate<float> 100
         // let (Model2D m) = createline x y c s
-        let m = match (createline x y c s) with | Model2D m -> m | _ -> failwith "improper type"
+        let m = match (createline x y c s) with | Model2 m -> m | _ -> failwith "improper type"
         evalModel maps t b m
         TeXModel (tex, f, b, m)
 
@@ -119,15 +144,15 @@ module Model2 =
     let setNames (names:list<string>) (models:list<Model>) = 
         for name, model in List.zip names models do
             match model with
-            | Model2D m -> m.Name <- name
-            | TeXModel (tex, f, b, m) -> m.Name <- name
+            | Model2 m -> m.name <- name
+            | TeXModel (tex, f, b, m) -> m.name <- name
 
 
     let rawModels (models:list<Model>) =
         models
         |> Array.ofList
-        |> Array.filter (function | Model2D _ -> true | _ -> false)
-        |> Array.map (function | Model2D m -> m | _ -> failwith "not a model2d")
+        |> Array.filter (function | Model2 _ -> true | _ -> false)
+        |> Array.map (function | Model2 m -> m | _ -> failwith "not a model2d")
 
 
 
@@ -144,28 +169,13 @@ module Views =
         static member onSizeChanged<'t when 't :> ContentControl>(func: SizeChangedEventArgs -> unit, ?subPatchOptions) :IAttr<'t> =
             AttrBuilder<'t>.CreateSubscription<SizeChangedEventArgs>(ContentControl.SizeChangedEvent, func, ?subPatchOptions = subPatchOptions)
 
-    type SKChart2DControl with
-        // static member width<'t when 't :> SKChart2DControl>(value:float) :IAttr<'t> =
-        //     AttrBuilder<'t>.CreateProperty<float>(, value, ValueNone)       
-
-        // static member height<'t when 't :> SKChart2DControl>(value:float) :IAttr<'t> =
-        //     AttrBuilder<'t>.CreateProperty<float>(SKChart2DControl.HeightProperty, value, ValueNone)       
-        
-        static member chart<'t when 't :> SKChart2DControl>(value:SKChart2D) :IAttr<'t> =
-            AttrBuilder<'t>.CreateProperty<SKChart2D>(SKChart2DControl.ChartProperty, value, ValueNone)       
-            
-        static member onSizeChanged<'t when 't :> SKChart2DControl>(func: SizeChangedEventArgs -> unit, ?subPatchOptions) :IAttr<'t> =
-            AttrBuilder<'t>.CreateSubscription<SizeChangedEventArgs>(SKChart2DControl.SizeChangedEvent, func, ?subPatchOptions = subPatchOptions)
-
-        // static member ximg<'t when 't :> SKChart2DControl>(value:string) :IAttr<'t> =
-        //     AttrBuilder<'t>.CreateProperty<SKImage>(SKChart2DControl.Chart.XImgProperty, value, ValueNone)       
 
     let ComponentSlider 
         (value:string * Variable) 
         (maps:Maps) 
-        (tex_models: array<string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2D>)
+        (tex_models: array<string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2>)
         (target:IReadable<string>) 
-        (chart:SKChart2D) =
+        (chart:SKChart2) =
         Component(fun ctx ->
             let (s,v) = value
             let variable = ctx.useState (match v.V with | ValueSome _v -> _v | ValueNone -> v.A + (v.B - v.A) / 2.0)
@@ -191,11 +201,13 @@ module Views =
                         Slider.onValueChanged (fun d ->
                             maps.variables[s].V <- ValueSome d
 
+                            let tc = target.Current
                             for (tex, f, b, m) in tex_models do
-                                if target.Current <> String.Empty && s <> target.Current && tex.Contains(s) then
-                                    evalModel maps target.Current b m
+                                if tc <> String.Empty && tc <> s && tex.Contains(s) then
+                                    evalModel maps tc b m
 
-                            chart.NormalizeModels()
+                            // chart.NormalizeModels()
+                            chart.UpdateModels()
                             variable.Set d
                         )
                     ]
@@ -246,14 +258,19 @@ module Views =
         )
 
 
-    let view2 (maps:Maps, models:list<Model>) =
+    let view2 (maps:Maps, models':list<string * Model>) =
         Component(fun ctx ->
+            models' |> List.iter (fun (n,m) -> m.Name <- n)
+            let (names,models) = List.unzip models'
             let tex_models = texModels models
             let raw_models = rawModels models            
-            let c = new SKChart2DControl()
-            let chart = c.Chart
-            for m in raw_models do chart.AttachModel m
-            for (tex, f, b, m) in tex_models do chart.AttachModel m            
+            let c = new SKChart2([])
+            let chart = c
+            // for m in raw_models do chart.AttachModel m
+            for m in raw_models do chart.AddModel m
+            // for (tex, f, b, m) in tex_models do chart.AttachModel m            
+            for (tex, f, b, m) in tex_models do chart.AddModel m            
+            chart.Update()
             
             let cons_strs = 
                 tex_models
@@ -420,7 +437,8 @@ module Views =
                                             if t <> String.Empty then
                                                 evalModel maps t b m
 
-                                        chart.NormalizeModels()
+                                        // chart.NormalizeModels()
+                                        chart.Update()
                                         chart.XImg <- (Converter.image t)        
                                         target.Set t
                                 )
@@ -462,7 +480,11 @@ module Views =
                         ]
                     ]
                     ContentControl.create [
-                        ContentControl.content c
+                        ContentControl.content (new SKChart2Control(c))
+                        ContentControl.onSizeChanged (fun s -> 
+                            c.W <- float32 (s.NewSize.Width)
+                            c.H <- float32 (s.NewSize.Height)
+                        )
                     ]
                     // ViewBuilder.Create<SKChart2DControl> [
                         // SKChart2DControl.width 800
@@ -478,45 +500,11 @@ module Views =
             ]
         )
 
-    let latexContent (str:string) =
-        if str.Contains '$' then
-            let a = str.IndexOf '$'
-            let b = str.LastIndexOf '$'
-            str[a..b - 1]
-        else str
+    let view2' (maps:Maps, models:list<string * Model>) =
+        // models |> List.iter (fun (n,m) -> m.Name <- n)
+        // let (names,models') = List.unzip models
+        view2(maps, models)
 
-    let viewTest() =
-        Component(fun ctx -> 
-            let tex = ctx.useState "f(x)"
-            let textbox = ctx.useState<TextBox> null
-            DockPanel.create [
-                DockPanel.lastChildFill true
-                DockPanel.children [
-                    StackPanel.create [
-                        StackPanel.horizontalAlignment HorizontalAlignment.Center
-                        StackPanel.dock Dock.Bottom
-                        StackPanel.margin (Thickness(0., 0., 0., 15.))
-                        StackPanel.children [
-
-                            Button.create [
-                                Button.content "convert"
-                                Button.onClick (fun _ -> tex.Set textbox.Current.Text)
-                            ]
-                            TextBox.create [
-                                TextBox.init textbox.Set
-                                TextBox.height 300
-                                TextBox.width 800                        
-                            ]
-                            
-                        ]
-                    ]
-                    Image.create [
-                        Image.stretch Media.Stretch.None
-                        Image.source (Converter.convert true (latexContent tex.Current))
-                    ]
-                ]
-            ]    
-        )
 
     type MainWindow() =
         inherit HostWindow()

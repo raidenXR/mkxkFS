@@ -3,6 +3,11 @@
 #r "../bin/Debug/net8.0/Renderer.dll"
 #r "../bin/Debug/net8.0/SKCharts.dll"
 
+#r "nuget: Avalonia, 11.0.6"
+#r "nuget: Avalonia.Desktop, 11.0.6"
+#r "nuget: Avalonia.Themes.Fluent, 11.0.6"
+#r "nuget: Avalonia.FuncUI, 1.1.0"
+#r "nuget: Avalonia.Fonts.Inter, 11.0.6"
 
 open System
 open MKXK
@@ -59,9 +64,9 @@ let s': Symbols = {
 }
 
 let fns = Map [
-    f0str, (FnGeneration.fromtex s' f0str)
-    f1str, (FnGeneration.fromtex s' f1str)
-    f6str, (FnGeneration.fromtex s' f6str)
+    f0str, (FnGeneration.fromTeX s' f0str)
+    f1str, (FnGeneration.fromTeX s' f1str)
+    f6str, (FnGeneration.fromTeX s' f6str)
 ]
 
 let maps: Maps = {
@@ -73,39 +78,17 @@ let maps: Maps = {
 let x = [|for i in 0..40 -> float i|]
 
 let models = [
-    Model2.createpoints x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
-    // Model2.createline x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
-    Model2.createpoints x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
-    // Model2.createline x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
-    Model2.createTeXModel maps f0str "C_A" Colors.Brown 2.0f
-    Model2.createTeXModel maps f1str "C_A" Colors.Green 2.0f
-    Model2.createTeXModel maps f6str "C_A" Colors.Blue 2.0f
+    "pts0", Model2.createpoints x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
+    "pts1", Model2.createline x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
+    "m0", Model2.createpoints x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
+    "m1", Model2.createline x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
+    "m2", Model2.createTeXModel maps f0str "C_A" Colors.Brown 2.0f
+    "m3", Model2.createTeXModel maps f1str "C_A" Colors.Green 2.0f
+    "m4", Model2.createTeXModel maps f6str "C_A" Colors.Blue 2.0f
 ]
 
-let bounds = function 
-    | Model2.Model2D m -> m.Bounds
-    | Model2.TeXModel (tex, f, b, m) -> m.Bounds
-
-let model2 = function
-    | Model2.Model2D m -> m
-    | Model2.TeXModel (tex,f,b,m) -> m
-
-let _models = models |> List.map (fun x -> model2 x) |> Array.ofList
-
-printfn "model0: %A, %d" _models[0].Bounds _models[0].VerticesCount
-printfn "model1: %A, %d" _models[1].Bounds _models[1].VerticesCount
-printfn "model2: %A, %d" _models[2].Bounds _models[2].VerticesCount
-printfn "model3: %A, %d" _models[3].Bounds _models[3].VerticesCount
-printfn "model4: %A, %d" _models[4].Bounds _models[4].VerticesCount
-
-_models[0].Name <- "raw pts 0"
-_models[1].Name <- "raw pts 1"
-_models[2].Name <- "f(x)"
-_models[3].Name <- "g(x)"
-_models[4].Name <- "z(x)"
-
-
-let r = Renderer(maps, models)
-r.Run()
+let r = Renderer()
+// r.Run(fun _ -> Views.view2(maps, models))
+r.RunParallel(fun _ -> Views.view2(maps, models))
 
 Console.ReadKey ()

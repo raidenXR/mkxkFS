@@ -12,3 +12,9 @@ fonts/
 *.so
 *.dll
 *.dy
+
+
+# FSharp.Formatting
+.fsdocs/
+output/
+tmp/

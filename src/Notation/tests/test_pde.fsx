@@ -4,7 +4,7 @@
 open System
 open System.IO
 open System.Diagnostics
-open NotationFS
+open Notation
 
 let functions = [
     // @"f(x) = \frac{A}{B}"

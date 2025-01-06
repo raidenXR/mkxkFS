@@ -4,7 +4,7 @@
 open System
 open System.IO
 open System.Diagnostics
-open NotationFS
+open Notation
 open MKXK
 
 let functions = [

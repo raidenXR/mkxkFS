@@ -1,6 +1,6 @@
 #r "../bin/Debug/net8.0/Notation.dll"
 
-open NotationFS
+open Notation
 
 let functions = [
     "g(x) = \\int_a^b \\frac{1}{2} x^2 dx"

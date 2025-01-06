@@ -327,8 +327,8 @@ module Mutation =
                 // ensure that targets for evaluation always exists and mutation does not break it
                 if not (vs |> Array.exists (fun x -> x.Value = t)) then vs[r.Next(vs.Length)].Value <- t
                 
-                let rmse = RMSE.ofExprOverNSamples pars.maps fn t pts 20
-                // let rmse = RMSE.ofExpr pars.maps fn t pts
+                // let rmse = RMSE.ofExprOverNSamples pars.maps fn t pts 20
+                let rmse = RMSE.ofExpr pars.maps fn t pts
                 if rmse < err then
                     err <- rmse
                     fn_out <- copy fn

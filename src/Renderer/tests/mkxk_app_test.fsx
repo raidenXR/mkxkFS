@@ -4,6 +4,13 @@
 #r "../bin/Debug/net8.0/Renderer.dll"
 #r "../bin/Debug/net8.0/SKCharts.dll"
 
+#r "nuget: Avalonia, 11.0.6"
+#r "nuget: Avalonia.Desktop, 11.0.6"
+#r "nuget: Avalonia.Themes.Fluent, 11.0.6"
+#r "nuget: Avalonia.FuncUI, 1.1.0"
+#r "nuget: Avalonia.Fonts.Inter, 11.0.6"
+
+
 open System
 open System.IO
 open MKXK
@@ -106,7 +113,7 @@ let (fns_optimized, errs) =
     pipe0
     |> Array.Parallel.map parallel_opt
     |> Array.sortBy (fun (f,err) -> err)
-    |> Array.take 10
+    |> Array.take 30
     |> Array.map (fun (x,y) -> latex x, y)
     |> Array.unzip
 #time
@@ -137,14 +144,13 @@ let models = [
     "f3(x)", Model2.createTeXModel maps fns_optimized[2] "C_A" Colors.Blue 2.0f
     "f4(x)", Model2.createTeXModel maps fns_optimized[3] "C_A" Colors.Brown 2.0f
     "f5(x)", Model2.createTeXModel maps fns_optimized[4] "C_A" Colors.Silver 2.0f
-    // "f6(x)", Model2.createTeXModel maps fns_optimized[5] "C_A" Colors.Black 2.0f
-    // "f7(x)", Model2.createTeXModel maps fns_optimized[6] "C_A" Colors.Olive 2.0f
-    // "f8(x)", Model2.createTeXModel maps fns_optimized[7] "C_A" Colors.OrangeRed 2.0f
-    // "f9(x)", Model2.createTeXModel maps fns_optimized[8] "C_A" Colors.CornflowerBlue 2.0f
-    // "f10(x)", Model2.createTeXModel maps fns_optimized[9] "C_A" Colors.Fuchsia 2.0f
+    "f6(x)", Model2.createTeXModel maps fns_optimized[5] "C_A" Colors.Black 2.0f
+    "f7(x)", Model2.createTeXModel maps fns_optimized[6] "C_A" Colors.Olive 2.0f
+    "f8(x)", Model2.createTeXModel maps fns_optimized[7] "C_A" Colors.OrangeRed 2.0f
+    "f9(x)", Model2.createTeXModel maps fns_optimized[8] "C_A" Colors.CornflowerBlue 2.0f
+    "f10(x)", Model2.createTeXModel maps fns_optimized[9] "C_A" Colors.Fuchsia 2.0f
 ]
 
-
-let renderer = Renderer(maps, models)
-renderer.Run()
+let renderer = Renderer()
+renderer.RunParallel(fun _ -> Views.view2'(maps, models))
 Console.ReadKey()
