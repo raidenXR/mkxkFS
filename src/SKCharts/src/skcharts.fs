@@ -228,6 +228,8 @@ type SKChart2(models':list<string * Model2.Model>) =
         with get() = yimg
         and set(value) = yimg <- value
 
+    member this.Bounds with get() = bounds
+
     member this.AddModel(model:Model2.Model) = add_model model
 
     member this.RemoveModel(model:Model2.Model) = remove_model model
@@ -264,6 +266,7 @@ type SKChart2(models':list<string * Model2.Model>) =
 
 
 type SKChart3(models:list<Model3.Model>, colormap:Colormap) = 
+    let colorbar = new Colorbar(colormap)
     let colormap = match colormap with
                     | Colormap.Spring -> Colormaps.spring ()
                     | Colormap.Summer -> Colormaps.summer ()
@@ -540,6 +543,7 @@ type SKChart3(models:list<Model3.Model>, colormap:Colormap) =
                 paint_black.Dispose()
                 paint_silver.Dispose()
                 paint_model.Dispose()
+                (colorbar :> IDisposable).Dispose()
             is_disposed <- true
 
     member this.W
@@ -566,6 +570,8 @@ type SKChart3(models:list<Model3.Model>, colormap:Colormap) =
         with get() = yimg
         and set(value) = yimg <- value
 
+    member this.Bounds with get() = bounds
+
     member this.Camera with get() = camera
 
     member this.AddModel(model:Model3.Model) = add_model model
@@ -581,7 +587,8 @@ type SKChart3(models:list<Model3.Model>, colormap:Colormap) =
         update_ticks ()
         update_models ()
         update_labels ()
-        // colorbar.Update()
+        colorbar.Bounds <- bounds
+        colorbar.Update()
         camera.Resync <- false
         
 
@@ -591,4 +598,4 @@ type SKChart3(models:list<Model3.Model>, colormap:Colormap) =
         canvas.DrawPoints(SKPointMode.Lines, tick_pts, paint_black)
         draw_labels (canvas)
         draw_models (canvas)
-        // colorbar.draw(canvas)
+        colorbar.Draw(canvas)

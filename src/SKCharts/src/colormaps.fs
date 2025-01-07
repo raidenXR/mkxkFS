@@ -84,16 +84,18 @@ type Colorbar(colormap:Colormap) =
                     | Colormap.Gray   -> Colormaps.gray ()
                     | _ -> failwith "not implemented yet"
 
-    let vertices = Array.zeroCreate<SKPoint> (64 * 4)
-    let colors   = Array.zeroCreate<SKColor> (64 * 4)
-    let indices  = Array.zeroCreate<uint16> (64 * 4)
+    let vertices = Array.zeroCreate<SKPoint> (Colormaps.MAP_SIZE * 4)
+    let colors   = Array.zeroCreate<SKColor> (Colormaps.MAP_SIZE * 4)
+    let indices  = Array.zeroCreate<uint16> (Colormaps.MAP_SIZE * 6)
 
-    let label_pts = Array.zeroCreate<SKPoint> 64
-    let label_vals = Array.zeroCreate<float> 64
+    let tick_pts  = Array.zeroCreate<SKPoint> (Colormaps.MAP_SIZE * 2)
+    let label_pts = Array.zeroCreate<SKPoint> Colormaps.MAP_SIZE
+    let label_vals = Array.zeroCreate<float> Colormaps.MAP_SIZE
     let mutable label_pts_slice = Memory<SKPoint>(label_pts)
 
     let mutable w = 800f
     let mutable h = 600f
+    let mutable b: Model3.Bounds = {xmin = 0; xmax = 1; ymin = 0; ymax = 1; zmin = 0; zmax = 1}
     let mutable border = SKRect()
     let mutable is_disposed = false
 
@@ -110,6 +112,11 @@ type Colorbar(colormap:Colormap) =
                 paint.Dispose()
             is_disposed <- true
 
+    member x.Bounds
+        with get() = b
+        and set(value) = b <- value
+    
+
     member x.Update () =
         let transform = Matrix3x2.CreateTranslation(0.7f, 0.0f) * Matrix3x2.CreateScale(0.5f, 0.5f)
         let pos = Vector2.Transform(Vector2(1.0f, 0.5f), transform)
@@ -120,6 +127,7 @@ type Colorbar(colormap:Colormap) =
         let mutable value = 0f
 
         let mutable n = 0
+        let mutable j = 0
         let mutable i = 0
         let mutable c = 0
         let mutable m = 0
@@ -140,18 +148,27 @@ type Colorbar(colormap:Colormap) =
             colors[c + 1] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1)) * value)]
             colors[c + 2] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1)) * value)]
             colors[c + 3] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1)) * value)]
+
+            if m % 48 = 0 then 
+                label_vals[n] <- (float value) * (b.zmax - b.zmin) + b.zmin
+                label_pts[n]  <- SKPoint(w * (x + dx + 0.01f), h * (1f - y))
+                tick_pts[j + 0] <- SKPoint(w * (x + dx + 0.00f), h * (1f - y) - 9f)
+                tick_pts[j + 1] <- SKPoint(w * (x + dx + 0.01f), h * (1f - y) - 9f)
+                n <- n + 1
+                j <- j + 2
             
             value <- value + dy
             y <- y + (dy / 2f)
+            
             m <- m + 4
             i <- i + 6
             c <- c + 4
-            n <- n + 1
         label_pts_slice <- Memory<SKPoint>(label_pts, 0, n)
         
 
     member this.Draw(canvas:SKCanvas) =
         canvas.DrawVertices(SKVertexMode.Triangles, vertices, null, colors, indices, paint)
+        canvas.DrawPoints(SKPointMode.Lines, tick_pts, paint)
         let slice = label_pts_slice.Span
-        for i in 0..4..slice.Length - 1 do
+        for i in 0..slice.Length - 1 do
             canvas.DrawText(label_vals[i].ToString("N3"), slice[i].X, slice[i].Y, paint)
