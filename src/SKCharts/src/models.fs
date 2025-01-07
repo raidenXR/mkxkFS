@@ -257,12 +257,11 @@ module Model3 =
         let v = Array.zeroCreate<Vector3> (x.Length)
         match kind with 
         | ChartType.Points -> 
-            let p = Array.zeroCreate<SKPoint> (x.Length)
-            let c = [|color|]
-            let i = [||]
-            let _w = x.Length
-            let _h = 1
-            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = _w; h = _h; points = p; indices = i; colors = c; kind = ChartType.Points}
+            let p = Array.zeroCreate<SKPoint> ((w - 1) * (h - 1) * 4)
+            let c = Array.zeroCreate<SKColor> ((w - 1) * (h - 1) * 4)
+            let i = Array.zeroCreate<uint16> ((w - 1) * (h - 1) * 6)
+            c[0] <- color
+            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = w; h = h; points = p; indices = i; colors = c; kind = ChartType.Points}
         | ChartType.Line ->
             let p = Array.zeroCreate<SKPoint> (2 * x.Length - 2)
             let c = [|color|]

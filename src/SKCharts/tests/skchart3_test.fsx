@@ -81,18 +81,88 @@ type SKChart3Control(skchart:SKChart3) =
         context.Custom(new CustomDrawOp3(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart));
         Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
 
+
+let peak3d (w:outref<int>) (h:outref<int>) =
+    let xmin = -3.
+    let xmax = 3.
+    let ymin = -3.
+    let ymax = 3.
+    let zmin = -8.
+    let zmax = 8.
+
+    let xlimitmin = xmin
+    let ylimitmin = ymin
+    let xspacing = 0.2
+    let yspacing = 0.2
+    let xnumber = int ((xmax - xmin) / xspacing) + 1
+    let ynumber = int ((ymax - ymin) / yspacing) + 1
+    let xpts = Array.zeroCreate<float> (xnumber * ynumber)
+    let ypts = Array.zeroCreate<float> (xnumber * ynumber)
+    let zpts = Array.zeroCreate<float> (xnumber * ynumber)
+    w <- int xnumber
+    h <- int ynumber
+
+    for i in 0..xnumber - 1 do
+        for j in 0..ynumber - 1 do
+            let x = xlimitmin + xspacing * (float i)
+            let y = ylimitmin + yspacing * (float j)
+            let z = 3. * Math.Pow((1. - x), 2.) *
+                    Math.Exp(-x * x - (y + 1.) * (y + 1.)) - 10. *
+                    (0.2 * x - Math.Pow(x, 3.) - Math.Pow(y, 5.)) *
+                    Math.Exp(-x * x - y * y) - 1. / 3. *
+                    Math.Exp(-(x + 1.) * (x + 1.) - y * y)
+            xpts[i * w + j] <- x
+            ypts[i * w + j] <- y
+            zpts[i * w + j] <- z
+    (xpts,ypts,zpts)
+
+
+let sin3d (w:outref<int>) (h:outref<int>) =
+    let xmin = -3.
+    let xmax = 3.
+    let ymin = -3.
+    let ymax = 3.
+    let zmin = -8.
+    let zmax = 8.
+    let xtick = 4.
+    let ytick = 4.
+    let ztick = 0.5
+
+    let xlimitmin = xmin
+    let ylimitmin = ymin
+    let xspacing = 0.2
+    let yspacing = 0.2
+    w <- int ((xmax - xmin) / xspacing) + 1
+    h <- int ((ymax - ymin) / yspacing) + 1
+    let xpts = Array.zeroCreate<float> (w * h)
+    let ypts = Array.zeroCreate<float> (w * h)
+    let zpts = Array.zeroCreate<float> (w * h)
+    for i = 0 to w - 1 do
+        for j = 0 to h - 1 do
+            let x = xlimitmin + xspacing * (float i)
+            let y = ylimitmin + yspacing * (float j)
+            let r = sqrt (x * x + y * y) + 0.000001
+            let z = sin (r) / r
+            xpts[i * w + j] <- x
+            ypts[i * w + j] <- y
+            zpts[i * w + j] <- z
+    (xpts,ypts,zpts)
+    
+
+
 let viewTest() =
     Component(fun ctx -> 
         let tex = ctx.useState "f(x)"
         let textbox = ctx.useState<TextBox> null
-        let x = [|for i in 0..100 -> float i|]
-        let y = [|for i in 0..100 -> float i|]
-        let z = [|for i in 0..100 -> float i|]
-        let m = Model3.create ChartType.Points x y z 10 10 (SKColors.Blue)
-        let c = new SKChart3([], Colormap.Spring)
-        c.AddModel m
-        c.Update()
-        let slider_val = ctx.useState 0.
+        let mutable w = 0
+        let mutable h = 0
+        let (x,y,z) = peak3d &w &h
+        let m0 = Model3.create ChartType.Points x y z w h (SKColors.Blue)
+        let (x,y,z) = sin3d &w &h
+        let m1 = Model3.create ChartType.Surface x y z w h (SKColors.Blue)
+        let c = new SKChart3([m0], Colormap.Hot)
+        let slider_val0 = ctx.useState 0.
+        let slider_val1 = ctx.useState 0.
         let r = Random()
         DockPanel.create [
             DockPanel.lastChildFill true
@@ -103,21 +173,20 @@ let viewTest() =
                     StackPanel.margin (Thickness(0., 0., 0., 15.))
                     StackPanel.children [
                         TextBlock.create [
-                            TextBlock.text (slider_val.Current.ToString("N3"))
+                            TextBlock.text (slider_val0.Current.ToString("N3"))
                         ]
                         Slider.create [
                             Slider.width 100
                             Slider.minimum -40
                             Slider.maximum 40
                             Slider.onValueChanged (fun d -> 
-                                let dy = 10. * r.NextDouble() - 5.
-                                let dz = 16. * r.NextDouble() - 8.
-                                for i in 0..y.Length - 1 do
-                                    y[i] <- x[i] + dy
-                                    z[i] <- x[i] + dz
                                 c.Camera.Azimuth <- float32 d
                                 c.Update()
+                                // slider_val0.Set d
                             )
+                        ]
+                        TextBlock.create [
+                            TextBlock.text (slider_val1.Current.ToString("N3"))
                         ]
                         Slider.create [
                             Slider.width 100
@@ -126,6 +195,7 @@ let viewTest() =
                             Slider.onValueChanged (fun d ->
                                 c.Camera.Elevation <- float32 d
                                 c.Update()
+                                // slider_val1.Set d
                             )
                         ]
                     ]

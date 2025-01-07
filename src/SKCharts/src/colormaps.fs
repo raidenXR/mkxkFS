@@ -72,6 +72,72 @@ module Colormaps =
             buffer[i] <- SKColor(r,g,b)
         buffer
 
+    let hot () =
+        let buffer = Array.zeroCreate<SKColor> MAP_SIZE
+        for n in 0..MAP_SIZE - 1 do
+            let lerp = (float n) / (float MAP_SIZE)
+            let n1 = int (3.0 * float MAP_SIZE / 8.0)
+            let i = int ((float MAP_SIZE - 1.0) * lerp)
+
+            let r = if i < n1 then (1.0 * (float i + 1.0) / float n1) else 1.0
+            let g = if i < n1 then 0.0 else (if (i >= n1 && i < 2 * n1) then (1.0 * (float i + 1. - float n1) / float n1) else 1.0)
+            let b = if i < 2 * n1 then 0.0 else (1.0 * (float i + 1. - 2. * float n1) / (float MAP_SIZE - 2.0 * float n1))
+            buffer[n] <- SKColor(byte (r * 255.), byte (g * 255.), byte (b * 255.))
+        buffer
+
+    let cool () =
+        let buffer = Array.zeroCreate<SKColor> MAP_SIZE
+        for n in 0..MAP_SIZE - 1 do
+            let lerp = (float n) / (float MAP_SIZE)
+            let i = int (float (MAP_SIZE - 1) * lerp)
+            let _array = 1.0 * (float i) / (float MAP_SIZE - 1.0)
+
+            let r = byte (255. * _array)
+            let g = byte (255. * (1. - _array))
+            let b = 255uy
+            buffer[n] <- SKColor(r, g, b)
+        buffer
+
+    let jet () =
+        let buffer = Array.zeroCreate<SKColor> MAP_SIZE
+        let n = int (Math.Ceiling(float MAP_SIZE / 4.0))
+        let cMatrix = Array2D.zeroCreate<float> MAP_SIZE 3
+        let mutable nMod = 0
+        let array1 = Array.zeroCreate<float> (3 * n - 1)
+        let red   = Array.zeroCreate<int> array1.Length
+        let green = Array.zeroCreate<int> array1.Length
+        let blue  = Array.zeroCreate<int> array1.Length
+
+        for i in 0..array1.Length - 1 do
+            if i < n then 
+                array1[i] <- float (i + 1) / float n
+            elif i >= n && i < 2 * n - 1 then 
+                array1[i] <- 1.0
+            elif i >= 2 * n - 1 then 
+                array1[i] <- 3.0 * float (n - 1 - i) / (float n)
+            green[i] <- int (Math.Ceiling(float n / 2.0)) - nMod + i
+            red[i]   <- green[i] + n
+            blue[i]  <- green[i] - n
+
+        let mutable nb = 0
+        for i in 0..blue.Length - 1 do
+            if blue[i] > 0 then nb <- nb + 1
+
+        for i in 0..MAP_SIZE - 1 do
+            for j in 0..red.Length - 1 do 
+                if i = red[j] && red[j] < MAP_SIZE then cMatrix[i,0] <- array1[i - red[0]]
+            for j in 0..green.Length - 1 do 
+                if i = green[j] && green[j] < MAP_SIZE then cMatrix[i,1] <- array1[i - green[0]]
+            for j in 0..blue.Length - 1 do 
+                if i = blue[j] && blue[j] >= 0 then cMatrix[i,2] <- array1[array1.Length - 1 - nb + i]
+
+        for i in 0..MAP_SIZE - 1 do
+            let r = byte (cMatrix[i,0] * 255.)
+            let g = byte (cMatrix[i,1] * 255.)
+            let b = byte (cMatrix[i,2] * 255.)
+            buffer[i] <- SKColor(r,g,b)
+        buffer
+            
 
 
 
@@ -82,6 +148,9 @@ type Colorbar(colormap:Colormap) =
                     | Colormap.Autumn -> Colormaps.autumn ()
                     | Colormap.Winter -> Colormaps.winter ()
                     | Colormap.Gray   -> Colormaps.gray ()
+                    | Colormap.Hot    -> Colormaps.hot ()
+                    | Colormap.Cool   -> Colormaps.cool ()
+                    | Colormap.Jet    -> Colormaps.jet ()
                     | _ -> failwith "not implemented yet"
 
     let vertices = Array.zeroCreate<SKPoint> (Colormaps.MAP_SIZE * 4)
@@ -115,6 +184,9 @@ type Colorbar(colormap:Colormap) =
     member x.Bounds
         with get() = b
         and set(value) = b <- value
+
+    member x.Colormap
+        with get() = ReadOnlySpan<SKColor>(colormap)
     
 
     member x.Update () =

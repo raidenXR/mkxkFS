@@ -130,19 +130,20 @@ type SKChart2(models':list<string * Model2.Model>) =
         
 
     let update_labels () = 
+        let b = bounds
         let mutable dv = 0.2f
         let mutable i = 0
         while dv < 1.0f do
-            label_vals[i + 0] <- (float dv) * (bounds.xmax - bounds.xmin) + bounds.xmin
-            label_vals[i + 1] <- (float dv) * (bounds.ymax - bounds.ymin) + bounds.ymin
+            label_vals[i + 0] <- (float dv) * (b.xmax - b.xmin) + b.xmin
+            label_vals[i + 1] <- (float dv) * (b.ymax - b.ymin) + b.ymin
             label_pts[i + 0]  <- cast (Vector2.Transform(Vector2(dv - 0.05f, -0.1f), transform))
             label_pts[i + 1]  <- cast (Vector2.Transform(Vector2(-0.1f - 0.05f, dv), transform))
             dv <- dv + 0.2f
             i  <- i + 2
-        label_vals[i + 0] <- bounds.xmax
-        label_vals[i + 1] <- bounds.ymax
-        label_pts[i + 0]  <- cast (Vector2.Transform(Vector2(1.0f, -0.1f), transform))
-        label_pts[i + 1]  <- cast (Vector2.Transform(Vector2(-0.1f, 1.0f), transform))
+        label_vals[i + 0] <- 1. * (b.xmax - b.xmin) + b.xmin
+        label_vals[i + 1] <- 1. * (b.ymax - b.ymax) + b.ymin
+        label_pts[i + 0]  <- cast (Vector2.Transform(Vector2(1f, -0.1f), transform))
+        label_pts[i + 1]  <- cast (Vector2.Transform(Vector2(-0.1f, 1f), transform))
         i <- i + 2
         label_pts_slice <- Memory<SKPoint>(label_pts, 0, i)
 
@@ -265,15 +266,8 @@ type SKChart2(models':list<string * Model2.Model>) =
 
 
 
-type SKChart3(models:list<Model3.Model>, colormap:Colormap) = 
+type SKChart3(models':list<Model3.Model>, colormap:Colormap) = 
     let colorbar = new Colorbar(colormap)
-    let colormap = match colormap with
-                    | Colormap.Spring -> Colormaps.spring ()
-                    | Colormap.Summer -> Colormaps.summer ()
-                    | Colormap.Autumn -> Colormaps.autumn ()
-                    | Colormap.Winter -> Colormaps.winter ()
-                    | Colormap.Gray   -> Colormaps.gray ()
-                    | _ -> failwith "not implemented yet"
     let camera = Model3.Camera(30f, -37.5f)
     let axis = [|
         Vector3(0f, 0f, 0f)
@@ -325,7 +319,7 @@ type SKChart3(models:list<Model3.Model>, colormap:Colormap) =
     
     let paint_model = new SKPaint(
         Color = SKColors.White, 
-        StrokeWidth = 1.0f, 
+        StrokeWidth = 2.0f, 
         IsAntialias = true,
         TextSize = 16f        
     )
@@ -334,13 +328,11 @@ type SKChart3(models:list<Model3.Model>, colormap:Colormap) =
 
     /// transform normalized vertices to screen-coordinates as pts
     let transform_pts (m:Model3.Model) (transform:Matrix4x4) =
-        let v = m.vertices
-        let p = m.points
-        let elevation = camera.Elevation
-        let azimuth = camera.Azimuth
-        let transform = camera.View
         match m.kind with
         | ChartType.Line ->
+            let v = m.vertices
+            let p = m.points
+            let transform = camera.View
             p[0] <- cast2d (Vector3.Transform(v[0], transform))
             let mutable i = 1
             let mutable j = 1
@@ -351,35 +343,68 @@ type SKChart3(models:list<Model3.Model>, colormap:Colormap) =
                 i <- i + 2
                 j <- j + 1
             p[p.Length - 1] <- cast2d (Vector3.Transform(v[v.Length - 1], transform))
-        | ChartType.Points
-        | ChartType.Surface ->
+        | ChartType.Points -> 
+            let width  = m.w
+            let height = m.h
             let vertices = m.vertices
+            let elevation = camera.Elevation
+            let azimuth = camera.Azimuth
+            let transform = camera.View
             // draw mesh
-            let mutable i = 0
             let mutable v = 0
-            let mutable c = 0
-            let mutable l = 0
-            let w = m.w
-            let h = m.h
-
-            while i < w - 1 do
+            for i = 0 to width - 2 do
                 let mutable ii = i
                 if elevation >= 0f then 
                     ii <- i
-                    if azimuth >= -180f && azimuth < 0f then ii <- w - 2 - i
+                    if azimuth >= -180f && azimuth < 0f then ii <- width - 2 - i
                 else
-                    ii <- w - 2 - i
+                    ii <- width - 2 - i
                     if azimuth >= -180f && azimuth < 0f then ii <- i
 
-                let mutable j = 0
-                while j < h - 1 do
-                    let mutable jj = l
-                    if elevation < 0f then jj <- h - 2 - l
+                for j = 0 to height - 2 do
+                    let mutable jj = j
+                    if elevation < 0f then jj <- height - 2 - j
 
-                    m.points[v + 0] <- cast2d (Vector3.Transform(vertices[w * ii + jj], transform))
-                    m.points[v + 1] <- cast2d (Vector3.Transform(vertices[w * ii + jj + 1], transform))
-                    m.points[v + 2] <- cast2d (Vector3.Transform(vertices[w * (ii + 1) + jj + 1], transform))
-                    m.points[v + 3] <- cast2d (Vector3.Transform(vertices[w * (ii + 1) + jj], transform))
+                    m.points[v + 0] <- cast2d (Vector3.Transform(vertices[width * ii + jj], transform))
+                    m.points[v + 1] <- cast2d (Vector3.Transform(vertices[width * ii + jj + 1], transform))
+                    m.points[v + 2] <- cast2d (Vector3.Transform(vertices[width * (ii + 1) + jj + 1], transform))
+                    m.points[v + 3] <- cast2d (Vector3.Transform(vertices[width * (ii + 1) + jj], transform))
+                    v <- v + 4
+        | ChartType.Surface ->
+            let width  = m.w
+            let height = m.h
+            let vertices = m.vertices
+            let elevation = camera.Elevation
+            let azimuth = camera.Azimuth
+            let transform = camera.View
+            let colormap = colorbar.Colormap
+            // draw mesh
+            let mutable v = 0
+            let mutable c = 0
+            let mutable l = 0
+
+            for i = 0 to width - 2 do
+                let mutable ii = i
+                if elevation >= 0f then 
+                    ii <- i
+                    if azimuth >= -180f && azimuth < 0f then ii <- width - 2 - i
+                else
+                    ii <- width - 2 - i
+                    if azimuth >= -180f && azimuth < 0f then ii <- i
+
+                for j = 0 to height - 2 do
+                    let mutable jj = j
+                    if elevation < 0f then jj <- height - 2 - j
+
+                    let vec0 = vertices[width * ii + jj]
+                    let vec1 = vertices[width * ii + jj + 1]
+                    let vec2 = vertices[width * (ii + 1) + jj + 1]
+                    let vec3 = vertices[width * (ii + 1) + jj]
+                    
+                    m.points[v + 0] <- cast2d (Vector3.Transform(vec0, transform))
+                    m.points[v + 1] <- cast2d (Vector3.Transform(vec1, transform))
+                    m.points[v + 2] <- cast2d (Vector3.Transform(vec2, transform))
+                    m.points[v + 3] <- cast2d (Vector3.Transform(vec3, transform))
 
                     m.indices[l + 0] <- uint16 (v + 0)
                     m.indices[l + 1] <- uint16 (v + 1)
@@ -388,16 +413,14 @@ type SKChart3(models:list<Model3.Model>, colormap:Colormap) =
                     m.indices[l + 4] <- uint16 (v + 1)
                     m.indices[l + 5] <- uint16 (v + 2)
 
-                    m.colors[c + 0] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1) * vertices[w * ii + jj].Z))]
-                    m.colors[c + 1] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1) * vertices[w * ii + jj + 1].Z))]
-                    m.colors[c + 2] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1) * vertices[w * (ii + 1) + jj + 1].Z))]
-                    m.colors[c + 3] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1) * vertices[w * (ii + 1) + jj].Z))]
+                    m.colors[c + 0] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1) * vec0.Z))]
+                    m.colors[c + 1] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1) * vec1.Z))]
+                    m.colors[c + 2] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1) * vec2.Z))]
+                    m.colors[c + 3] <- colormap[int ((float32 (Colormaps.MAP_SIZE - 1) * vec3.Z))]
             
-                    j <- j + 1
                     v <- v + 4
                     l <- l + 6    
                     c <- c + 4
-                i <- i + 1
         | _ -> failwith "this not implemented"
 
 
@@ -535,6 +558,12 @@ type SKChart3(models:list<Model3.Model>, colormap:Colormap) =
             | ChartType.Surface ->
                 canvas.DrawVertices(SKVertexMode.Triangles, m.points, null, m.colors, m.indices, paint_model)
             | _ -> failwith "this ChartType is not valid for SKChart3"
+
+
+    do
+        for m in models' do
+            models.Add m
+        update_state ()
             
 
     interface IDisposable with 
