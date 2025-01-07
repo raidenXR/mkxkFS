@@ -49,8 +49,8 @@ module Converter =
 module Model2 =
     
     type Model = 
-        | TeXModel of string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2
-        | Model2 of SKCharts.Model2
+        | TeXModel of string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2.Model
+        | Model2 of SKCharts.Model2.Model
 
         with member x.Name 
                 with get() =
@@ -64,13 +64,11 @@ module Model2 =
 
     
     let createpoints x y (c:Colors) s =
-        let pts = Array.zip x y 
-        let m = SKCharts.Model2.create Points pts (SKColor(uint c))
+        let m = SKCharts.Model2.create ChartType.Points x y (SKColor(uint c))
         Model2 m
 
     let createline x y (c:Colors) s =
-        let pts = Array.zip x y
-        let m = SKCharts.Model2.create Line pts (SKColor(uint c))
+        let m = SKCharts.Model2.create ChartType.Line x y (SKColor(uint c))
         Model2 m
 
     // let evalModel (m:Maps) t f (model:SKCharts.Model2) :unit =
@@ -102,7 +100,7 @@ module Model2 =
     //     yvalues[yvalues.Length - 1] <- (Evaluation.eval m t f)           
 
 
-    let evalModel (m:Maps) t f (model:SKCharts.Model2) :unit =
+    let evalModel (m:Maps) t f (model:SKCharts.Model2.Model) :unit =
         let xvalues = model.xvalues
         let yvalues = model.yvalues
         let A = m.variables[t].A
@@ -173,7 +171,7 @@ module Views =
     let ComponentSlider 
         (value:string * Variable) 
         (maps:Maps) 
-        (tex_models: array<string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2>)
+        (tex_models: array<string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2.Model>)
         (target:IReadable<string>) 
         (chart:SKChart2) =
         Component(fun ctx ->

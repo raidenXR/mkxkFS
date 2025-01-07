@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <Compile Include="src/models.fs" />
+    <Compile Include="src/colormaps.fs" />
     <Compile Include="src/skcharts.fs" />
   </ItemGroup>
   
