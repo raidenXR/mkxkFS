@@ -77,11 +77,12 @@ let maps: Maps = {
 
 let x = [|for i in 0..40 -> float i|]
 
+// create some lines, points, and surfaces for the SKChart of the Views.view2
 let models = [
-    "pts0", Models.createRawModel2 "C_A" "f(x)" x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
-    "pts1", Models.createRawModel2 "C_A" "f(x)" x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
-    "m0", Models.createRawModel2 "C_A" "f(x)" x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
-    "m1", Models.createRawModel2 "C_A" "f(x)" x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
+    "pts0", Models.createRawModel2 "C_A" "f(x)" x [|for i in 0..40 -> float ((i + 4) * (i - 3))|] Colors.Navy 4.2f
+    "pts1", Models.createRawModel2 "C_B" "f(x)" x [|for i in 0..40 -> float i|] Colors.DarkCyan 4.2f
+    "m0", Models.createRawModel2 "C_a" "f(x)" x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.DarkKhaki 4.2f
+    "m1", Models.createRawModel2 "C_A" "f(x)" x [|for i in 0..40 -> float i / 2.0 + 1.3 * (float i * 0.33)|] Colors.Purple 4.2f
     "f(x)", Models.createTeXModel maps f0str "C_A" Colors.Brown 3.0f
     "g(x)", Models.createTeXModel maps f1str "C_A" Colors.Green 3.0f
     "g(x)", Models.createTeXModel maps f2str "C_A" Colors.Black 3.0f

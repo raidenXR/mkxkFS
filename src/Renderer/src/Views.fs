@@ -495,6 +495,7 @@ module Views =
                             ComboBoxComponent("select target-y", maps, _vars, target_y, target_x, skchart, models, vars_list, tex_fns)
 
                             // slider for c3 rotation - elevation
+                            TextBlock.create [TextBlock.text "elevation: "]
                             Slider.create [
                                 Slider.margin (Thickness(0.,0.5))
                                 Slider.width 120
@@ -509,6 +510,7 @@ module Views =
                                 )
                             ]
                             // slider for c3 rotation - azimuth
+                            TextBlock.create [TextBlock.text "azimuth: "]
                             Slider.create [
                                 Slider.margin (Thickness(0.,0.5))
                                 Slider.width 120

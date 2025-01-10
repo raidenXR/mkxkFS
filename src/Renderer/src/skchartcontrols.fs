@@ -183,9 +183,9 @@ type SKChartControl(skchart:SKChart) =
                 // printfn "skchart3 before draw context"
                 // context.Custom(new CustomDrawOp3(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart.AsSKChart3()));
                 // printfn "skchart3 before invalidate"
-                // Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
             
             context.Custom(new CustomDrawOp(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart));
+            Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
             // printfn "skchart drawing count: %d, width: %g, height: %g, w: %g, h: %g" count width height w h 
         else
             printfn "skchart is null"
