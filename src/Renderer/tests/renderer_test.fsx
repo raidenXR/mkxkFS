@@ -1,18 +1,18 @@
-#r "nuget: System.Drawing.Common, 8.0.0"
 #r "../bin/Debug/net8.0/mkxkFS.dll"
 #r "../bin/Debug/net8.0/Renderer.dll"
 #r "../bin/Debug/net8.0/SKCharts.dll"
 
-#r "nuget: Avalonia, 11.0.6"
-#r "nuget: Avalonia.Desktop, 11.0.6"
-#r "nuget: Avalonia.Themes.Fluent, 11.0.6"
-#r "nuget: Avalonia.FuncUI, 1.1.0"
-#r "nuget: Avalonia.Fonts.Inter, 11.0.6"
+#r "nuget: Avalonia, 11.2.3"
+#r "nuget: Avalonia.Desktop, 11.2.3"
+#r "nuget: Avalonia.Themes.Fluent, 11.2.3"
+#r "nuget: Avalonia.FuncUI, 1.5.1"
+#r "nuget: Avalonia.Fonts.Inter, 11.2.3"
 
 open System
 open MKXK
 open ExprTree
 open RendererFS
+open SkiaSharp
 
 
 // create some table of variables
@@ -55,7 +55,7 @@ let [<Literal>] f1str = "g(x) = T + k_A - (C_A * 4.3) / C_B - t^2"
 // let [<Literal>] f3str = "f(x) = N_A + 4.5 - (C_A * 4.3) / C_B - 8^2"
 // let [<Literal>] f4str = "f(x) = N_A + 4.5 - (C_A * 4.3) / C_B - 8^2"
 // let [<Literal>] f5str = "f(x) = N_A + 4.5 - (C_A * 4.3) / C_B - 8^2"
-let [<Literal>] f6str = "z(x) = A_n + A_2 - (C_A * 4.3) / A_1 - 8^2 + t^2"
+let [<Literal>] f6str = "z(x) = A_n + A_2 - (C_A * 4.3) / A_1 - 8^2 + t^2 + a0 - t * C_B / a2 * a1"
 
 let s': Symbols = {
     constants = constants.Keys
@@ -78,13 +78,13 @@ let maps: Maps = {
 let x = [|for i in 0..40 -> float i|]
 
 let models = [
-    "pts0", Model2.createpoints x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
-    "pts1", Model2.createline x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
-    "m0", Model2.createpoints x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
-    "m1", Model2.createline x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
-    "m2", Model2.createTeXModel maps f0str "C_A" Colors.Brown 2.0f
-    "m3", Model2.createTeXModel maps f1str "C_A" Colors.Green 2.0f
-    "m4", Model2.createTeXModel maps f6str "C_A" Colors.Blue 2.0f
+    "pts0", Models.createRawModel2 "C_A" "f(x)" x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
+    "pts1", Models.createRawModel2 "C_A" "f(x)" x [|for i in 0..40 -> float i|] Colors.Navy 4.2f
+    "m0", Models.createRawModel2 "C_A" "f(x)" x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
+    "m1", Models.createRawModel2 "C_A" "f(x)" x [|for i in 0..40 -> float i / 2.0 + 0.3 * (float i)|] Colors.Purple 4.2f
+    "f(x)", Models.createTeXModel maps f0str "C_A" Colors.Brown 3.0f
+    "g(x)", Models.createTeXModel maps f1str "C_A" Colors.Green 3.0f
+    "z(x)", Models.createTeXModel maps f6str "C_A" Colors.Blue 4.0f
 ]
 
 let r = Renderer()

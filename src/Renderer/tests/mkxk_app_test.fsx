@@ -4,11 +4,11 @@
 #r "../bin/Debug/net8.0/Renderer.dll"
 #r "../bin/Debug/net8.0/SKCharts.dll"
 
-#r "nuget: Avalonia, 11.0.6"
-#r "nuget: Avalonia.Desktop, 11.0.6"
-#r "nuget: Avalonia.Themes.Fluent, 11.0.6"
-#r "nuget: Avalonia.FuncUI, 1.1.0"
-#r "nuget: Avalonia.Fonts.Inter, 11.0.6"
+#r "nuget: Avalonia, 11.2.3"
+#r "nuget: Avalonia.Desktop, 11.2.3"
+#r "nuget: Avalonia.Themes.Fluent, 11.2.3"
+#r "nuget: Avalonia.FuncUI, 1.5.1"
+#r "nuget: Avalonia.Fonts.Inter, 11.2.3"
 
 
 open System
@@ -137,20 +137,20 @@ html
 
 
 let models = [
-    "rp0", Model2.createpoints x y Colors.Navy 4.2f
-    "rp1", Model2.createpoints x z Colors.Purple 4.2f
-    "f1(x)", Model2.createTeXModel maps fns_optimized[0] "C_A" Colors.Green 2.0f
-    "f2(x)", Model2.createTeXModel maps fns_optimized[1] "C_A" Colors.Red 2.0f
-    "f3(x)", Model2.createTeXModel maps fns_optimized[2] "C_A" Colors.Blue 2.0f
-    "f4(x)", Model2.createTeXModel maps fns_optimized[3] "C_A" Colors.Brown 2.0f
-    "f5(x)", Model2.createTeXModel maps fns_optimized[4] "C_A" Colors.Silver 2.0f
-    "f6(x)", Model2.createTeXModel maps fns_optimized[5] "C_A" Colors.Black 2.0f
-    "f7(x)", Model2.createTeXModel maps fns_optimized[6] "C_A" Colors.Olive 2.0f
-    "f8(x)", Model2.createTeXModel maps fns_optimized[7] "C_A" Colors.OrangeRed 2.0f
-    "f9(x)", Model2.createTeXModel maps fns_optimized[8] "C_A" Colors.CornflowerBlue 2.0f
-    "f10(x)", Model2.createTeXModel maps fns_optimized[9] "C_A" Colors.Fuchsia 2.0f
+    "rp0", Models.createRawModel2 "C_A" "C_a" x y Colors.Navy 4.2f
+    "rp1", Models.createRawModel2 "C_B" "C_b" x z Colors.Purple 4.2f
+    "f1(x)", Models.createTeXModel maps fns_optimized[0] "C_A" Colors.Green 2.0f
+    "f2(x)", Models.createTeXModel maps fns_optimized[1] "C_A" Colors.Red 2.0f
+    "f3(x)", Models.createTeXModel maps fns_optimized[2] "C_A" Colors.Blue 2.0f
+    "f4(x)", Models.createTeXModel maps fns_optimized[3] "C_A" Colors.Brown 2.0f
+    "f5(x)", Models.createTeXModel maps fns_optimized[4] "C_A" Colors.Silver 2.0f
+    "f6(x)", Models.createTeXModel maps fns_optimized[5] "C_A" Colors.Black 2.0f
+    "f7(x)", Models.createTeXModel maps fns_optimized[6] "C_A" Colors.Olive 2.0f
+    "f8(x)", Models.createTeXModel maps fns_optimized[7] "C_A" Colors.OrangeRed 2.0f
+    "f9(x)", Models.createTeXModel maps fns_optimized[8] "C_A" Colors.CornflowerBlue 2.0f
+    "f10(x)", Models.createTeXModel maps fns_optimized[9] "C_A" Colors.Fuchsia 2.0f
 ]
 
 let renderer = Renderer()
-renderer.RunParallel(fun _ -> Views.view2'(maps, models))
+renderer.RunParallel(fun _ -> Views.view2(maps, models))
 Console.ReadKey()

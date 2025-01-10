@@ -25,6 +25,7 @@ module Model2 =
         mutable name: string
         kind:     ChartType
         color:    SKColor    
+        strokeWidth: float32
         xvalues:  array<float>
         yvalues:  array<float>
         vertices: array<Vector2>
@@ -32,6 +33,8 @@ module Model2 =
     }
 
     module Bounds = 
+        let Default = {xmin = 0.; xmax = 1.; ymin = 0.; ymax = 1.}
+    
         let ofArray (x:array<float>) (y:array<float>) =
             let mutable xmin = x[0]
             let mutable xmax = x[0]
@@ -78,21 +81,21 @@ module Model2 =
 
         
         
-    let create (kind:ChartType) (x:array<float>) (y:array<float>) (color:SKColor) :Model =
+    let create (kind:ChartType) (x:array<float>) (y:array<float>) (color:SKColor) s :Model =
         let b = Bounds.ofArray x y 
         let v = Array.zeroCreate<Vector2> (x.Length)
 
         match kind with
         | ChartType.Points ->
             let p = Array.zeroCreate<SKPoint> (x.Length)
-            {name = ""; xvalues = x; yvalues = y; points = p; vertices = v; color = color; kind = ChartType.Points}
+            {name = ""; xvalues = x; yvalues = y; points = p; vertices = v; color = color; kind = ChartType.Points; strokeWidth = s}
         | ChartType.Line ->
             let p = Array.zeroCreate<SKPoint> (2 * x.Length - 2)
-            {name = ""; xvalues = x; yvalues = y; points = p; vertices = v; color = color; kind = ChartType.Line}
+            {name = ""; xvalues = x; yvalues = y; points = p; vertices = v; color = color; kind = ChartType.Line; strokeWidth = s}
         | _ -> failwith "not implemented yet" 
         
 
-    let createEmpty (kind:ChartType) (capacity:int) (color:SKColor) :Model =
+    let createEmpty (kind:ChartType) (capacity:int) (color:SKColor) s :Model =
         let x = Array.zeroCreate<float> (capacity)
         let y = Array.zeroCreate<float> (capacity)
         let v = Array.zeroCreate<Vector2> (capacity)
@@ -100,10 +103,10 @@ module Model2 =
         match kind with
         | ChartType.Points ->
             let p = Array.zeroCreate<SKPoint> (capacity)
-            {name = ""; xvalues = x; yvalues = y; points = p; vertices = v; color = color; kind = ChartType.Points}
+            {name = ""; xvalues = x; yvalues = y; points = p; vertices = v; color = color; kind = ChartType.Points; strokeWidth = s}
         | ChartType.Line -> 
             let p = Array.zeroCreate<SKPoint> (2 * capacity - 2)
-            {name = ""; xvalues = x; yvalues = y; points = p; vertices = v; color = color; kind = ChartType.Line}
+            {name = ""; xvalues = x; yvalues = y; points = p; vertices = v; color = color; kind = ChartType.Line; strokeWidth = s}
         | _ -> failwith "not implemented yet" 
 
 
@@ -188,9 +191,11 @@ module Model3 =
         points:  array<SKPoint>
         indices: array<uint16>
         colors: array<SKColor>
+        strokeWidth: float32
     }
 
     module Bounds = 
+        let Default = {xmin = 0.; xmax = 1.; ymin = 0.; ymax = 1.; zmin = 0.; zmax = 1.}
 
         let ofArray (x:array<float>) (y:array<float>) (z:array<float>)=
             let mutable xmin = x[0]
@@ -252,57 +257,55 @@ module Model3 =
             
     
 
-    let create (kind:ChartType) (x:array<float>) (y:array<float>) (z:array<float>) w h (color:SKColor) = 
+    let create (kind:ChartType) (x:array<float>) (y:array<float>) (z:array<float>) w h (color:SKColor) s = 
         let b = Bounds.ofArray x y z
         let v = Array.zeroCreate<Vector3> (x.Length)
         match kind with 
         | ChartType.Points -> 
             let p = Array.zeroCreate<SKPoint> ((w - 1) * (h - 1) * 4)
-            let c = Array.zeroCreate<SKColor> ((w - 1) * (h - 1) * 4)
-            let i = Array.zeroCreate<uint16> ((w - 1) * (h - 1) * 6)
+            let c = [|color|]
+            let i = [||]
             c[0] <- color
-            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = w; h = h; points = p; indices = i; colors = c; kind = ChartType.Points}
+            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = w; h = h; points = p; indices = i; colors = c; kind = ChartType.Points; strokeWidth = s}
         | ChartType.Line ->
             let p = Array.zeroCreate<SKPoint> (2 * x.Length - 2)
             let c = [|color|]
             let i = [||]
             let _w = (2 * x.Length - 2)
             let _h = 1
-            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = _w; h = _h; points = p; indices = i; colors = c; kind = ChartType.Line}
+            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = _w; h = _h; points = p; indices = i; colors = c; kind = ChartType.Line; strokeWidth = s}
         | ChartType.Surface ->
             let p = Array.zeroCreate<SKPoint> ((w - 1) * (h - 1) * 4)
             let c = Array.zeroCreate<SKColor> ((w - 1) * (h - 1) * 4)
             let i = Array.zeroCreate<uint16> ((w - 1) * (h - 1) * 6)
-            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = w; h = h; points = p; indices = i; colors = c; kind = ChartType.Surface}
+            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = w; h = h; points = p; indices = i; colors = c; kind = ChartType.Surface; strokeWidth = s}
         | _ -> failwith "this ChartType is not implemented for SKChart3"
             
             
             
-    let createEmpty (kind:ChartType) (capacity:int) w h (color:SKColor) = 
-        let x = Array.zeroCreate<float> (capacity)
-        let y = Array.zeroCreate<float> (capacity)
-        let z = Array.zeroCreate<float> (capacity)
-        let v = Array.zeroCreate<Vector3> (capacity)
+    let createEmpty (kind:ChartType) w h (color:SKColor) s = 
+        let x = Array.zeroCreate<float> (w * h)
+        let y = Array.zeroCreate<float> (w * h)
+        let z = Array.zeroCreate<float> (w * h)
+        let v = Array.zeroCreate<Vector3> (w * h)
         match kind with 
         | ChartType.Points -> 
-            let p = Array.zeroCreate<SKPoint> (x.Length)
+            let p = Array.zeroCreate<SKPoint> ((w - 1) * (h - 1) * 4)
             let c = [|color|]
             let i = [||]
-            let _w = x.Length
-            let _h = 1
-            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = _w; h = _h; points = p; indices = i; colors = c; kind = ChartType.Points}
+            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = w; h = h; points = p; indices = i; colors = c; kind = ChartType.Points; strokeWidth = s}
         | ChartType.Line ->
             let p = Array.zeroCreate<SKPoint> (2 * x.Length - 2)
             let c = [|color|]
             let i = [||]
             let _w = (2 * x.Length - 2)
             let _h = 1
-            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = _w; h = _h; points = p; indices = i; colors = c; kind = ChartType.Line}
+            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w = _w; h = _h; points = p; indices = i; colors = c; kind = ChartType.Line; strokeWidth = s}
         | ChartType.Surface ->
             let p = Array.zeroCreate<SKPoint> ((w - 1) * (h - 1) * 4)
             let c = Array.zeroCreate<SKColor> ((w - 1) * (h - 1) * 4)
             let i = Array.zeroCreate<uint16> ((w - 1) * (h - 1) * 6)
-            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w= w; h = h; points = p; indices = i; colors = c; kind = ChartType.Surface}
+            {name = ""; xvalues = x; yvalues = y; zvalues = z; vertices = v; w= w; h = h; points = p; indices = i; colors = c; kind = ChartType.Surface; strokeWidth = s}
         | _ -> failwith "this ChartType is not implemented for SKChart3"
             
 
@@ -318,5 +321,8 @@ module Model3 =
             let yn = (y[i] - b.ymin) / (b.ymax - b.ymin)
             let zn = (z[i] - b.zmin) / (b.zmax - b.zmin)
             v[i] <- Vector3(float32 xn, float32 yn, float32 zn)
-
     
+type SKModel =
+    | Model2 of Model2.Model
+    | Model3 of Model3.Model
+

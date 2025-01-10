@@ -20,6 +20,7 @@ open SKCharts
 
 module Converter =
     open Notation
+    open Models
     open System.Linq
 
     let ms = new System.IO.MemoryStream(8 * 1024)
@@ -46,118 +47,10 @@ module Converter =
         SKImage.FromEncodedData(ms)
 
 
-module Model2 =
-    
-    type Model = 
-        | TeXModel of string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2.Model
-        | Model2 of SKCharts.Model2.Model
-
-        with member x.Name 
-                with get() =
-                    match x with
-                    | TeXModel (s,f,b,m) -> m.name
-                    | Model2 m -> m.name
-                and set(value) = 
-                    match x with
-                    | TeXModel (s,f,b,m) -> m.name <- value
-                    | Model2 m -> m.name <- value
-
-    
-    let createpoints x y (c:Colors) s =
-        let m = SKCharts.Model2.create ChartType.Points x y (SKColor(uint c))
-        Model2 m
-
-    let createline x y (c:Colors) s =
-        let m = SKCharts.Model2.create ChartType.Line x y (SKColor(uint c))
-        Model2 m
-
-    // let evalModel (m:Maps) t f (model:SKCharts.Model2) :unit =
-    //     let xvalues = model.xvalues
-    //     let yvalues = model.yvalues
-    //     let N = xvalues.Length
-    //     let n = N / 2 + 1
-    //     let dx = (m.variables[t].B - m.variables[t].A) / float n
-
-    //     let mutable x = m.variables[t].A
-    //     m.variables[t].V <- ValueSome x
-    //     xvalues[0] <- x
-    //     yvalues[0] <- Evaluation.eval m t f
-
-    //     let mutable i = 1
-    //     while i + 1 < N do
-    //         x <- x + dx
-    //         m.variables[t].V <- ValueSome x
-    //         let y = Evaluation.eval m t f
-    //         xvalues[i + 0] <- x
-    //         xvalues[i + 1] <- x 
-    //         yvalues[i + 0] <- y
-    //         yvalues[i + 1] <- y 
-    //         i <- i + 2
-
-    //     x <- m.variables[t].B
-    //     m.variables[t].V <- ValueSome x
-    //     xvalues[xvalues.Length - 1] <- x
-    //     yvalues[yvalues.Length - 1] <- (Evaluation.eval m t f)           
-
-
-    let evalModel (m:Maps) t f (model:SKCharts.Model2.Model) :unit =
-        let xvalues = model.xvalues
-        let yvalues = model.yvalues
-        let A = m.variables[t].A
-        let B = m.variables[t].B
-        let dx = (B - A) / (float xvalues.Length)
-        let mutable x = A
-        let mutable i = 0
-        
-        while x < B do
-            m.variables[t].V <- ValueSome x
-            xvalues[i] <- x
-            yvalues[i] <- Evaluation.eval m t f    
-            x <- x + dx
-        
-
-    let createTeXModel (maps:Maps) tex t c s :Model =
-        let s': Symbols = {
-            constants = maps.constants.Keys
-            variables = maps.variables.Keys
-            functions = maps.functions.Keys
-        }
-        let f = Parser.parse s' tex
-        let b = Binder.bind f
-        let x = Array.zeroCreate<float> 100
-        let y = Array.zeroCreate<float> 100
-        // let (Model2D m) = createline x y c s
-        let m = match (createline x y c s) with | Model2 m -> m | _ -> failwith "improper type"
-        evalModel maps t b m
-        TeXModel (tex, f, b, m)
-
-
-    let texModels (models:list<Model>) =
-        models 
-        |> Array.ofList 
-        |> Array.filter (function | TeXModel _ -> true | _ -> false) 
-        |> Array.map (function | TeXModel (tex,f,b,m) -> (tex,f,b,m) | _ -> failwith "not a tex-model")
-
-
-    let setNames (names:list<string>) (models:list<Model>) = 
-        for name, model in List.zip names models do
-            match model with
-            | Model2 m -> m.name <- name
-            | TeXModel (tex, f, b, m) -> m.name <- name
-
-
-    let rawModels (models:list<Model>) =
-        models
-        |> Array.ofList
-        |> Array.filter (function | Model2 _ -> true | _ -> false)
-        |> Array.map (function | Model2 m -> m | _ -> failwith "not a model2d")
-
-
-
 module Views =
     open Avalonia.FuncUI.Builder
     open Avalonia.FuncUI.Types
-    open Model2
+    open Models
 
     type ToggleButton with
         static member content<'t when 't :> ToggleButton>(value:obj) :IAttr<'t> =
@@ -166,21 +59,22 @@ module Views =
     type ContentControl with
         static member onSizeChanged<'t when 't :> ContentControl>(func: SizeChangedEventArgs -> unit, ?subPatchOptions) :IAttr<'t> =
             AttrBuilder<'t>.CreateSubscription<SizeChangedEventArgs>(ContentControl.SizeChangedEvent, func, ?subPatchOptions = subPatchOptions)
+           
+    type SKChartView =
+        | Chart2 = 0
+        | Chart3 = 1
 
-
-    let ComponentSlider 
+    let SliderComponent 
         (value:string * Variable) 
         (maps:Maps) 
-        (tex_models: array<string * ExprTree.Expr * Binder.BoundExpr * SKCharts.Model2.Model>)
-        (target:IReadable<string>) 
-        (chart:SKChart2) =
+        (skchart:SKChartControl)
+        (tx:ref<string>)
+        (ty:ref<string>) =
         Component(fun ctx ->
             let (s,v) = value
             let variable = ctx.useState (match v.V with | ValueSome _v -> _v | ValueNone -> v.A + (v.B - v.A) / 2.0)
-            let target = ctx.usePassedRead target
 
             Grid.create [
-                // Grid.columnDefinitions "100, 140, 120, 100"
                 Grid.columnDefinitions "100, 140, 200"
                 Grid.verticalScrollBarVisibility ScrollBarVisibility.Auto
                 Grid.children [
@@ -197,15 +91,21 @@ module Views =
                         Slider.maximum v.B
                         Slider.value variable.Current    
                         Slider.onValueChanged (fun d ->
-                            maps.variables[s].V <- ValueSome d
+                            if maps.variables.ContainsKey s then
+                                maps.variables[s].V <- ValueSome d
 
-                            let tc = target.Current
-                            for (tex, f, b, m) in tex_models do
-                                if tc <> String.Empty && tc <> s && tex.Contains(s) then
-                                    evalModel maps tc b m
-
-                            // chart.NormalizeModels()
-                            chart.UpdateModels()
+                                if skchart.IsSKChart2 then
+                                    let c2 = skchart.AsSKChart2()
+                                    for ob in skchart.Args do
+                                        let (tex,i,b) = (ob :?> string * int * Binder.BoundExpr)
+                                        evalModel2 maps tx.Value b (c2.Models[i])
+                                    c2.Update()
+                                if skchart.IsSKChart3 then
+                                    let c3 = skchart.AsSKChart3()
+                                    for ob in skchart.Args do
+                                        let (tex,i,b) = (ob :?> string * int * Binder.BoundExpr)
+                                        evalModel3 maps tx.Value ty.Value b (c3.Models[i])
+                                    c3.Update()                            
                             variable.Set d
                         )
                     ]
@@ -215,22 +115,108 @@ module Views =
                         TextBlock.maxWidth 100
                         TextBlock.text (variable.Current.ToString("N4"))
                     ]
-                    // Add a TextBlock, to render err, but that would require x y of points & eval on x of raw_points
-                    // instead of x of v.V + dx, not practical
-                    // TextBlock.create [
-                    //     TextBlock.column 3
-                    //     TextBlock.width 100
-                    //     TextBlock.maxWidth 100
-                    //     TextBlock.text ""
-                    // ]
                 ]
             ]
         )
 
-    let ComponentFnNotation 
-        (i:int)
-        (s:string)
-        (notation:IReadable<bool>) =
+    let ComboBoxComponent (
+        tag:string, 
+        maps:Maps, 
+        vars:array<string * Variable>, 
+        tout:ref<string>, 
+        tin:ref<String>,
+        skchart:SKChartControl, 
+        models:seq<Model>,
+        tex_fns:IWritable<list<string>>) =
+        Component.create("combobox", fun ctx ->
+            let tex_fns = ctx.usePassed tex_fns
+            StackPanel.create [
+                StackPanel.children [
+                    TextBlock.create [TextBlock.text tag]
+                    ComboBox.create [
+                        ComboBox.width 150
+                        ComboBox.dataItems vars
+                        ComboBox.itemTemplate (
+                            DataTemplateView<string * Variable>.create (fun (s,v) ->
+                                Image.create [
+                                    Image.stretch Media.Stretch.None 
+                                    Image.source (Converter.convertSymbol s)
+                                ]        
+                            )
+                        )
+                        ComboBox.onSelectedItemChanged (fun args ->
+                            if args <> null then
+                                let (t,v) = args :?> (string * Variable) 
+                                let variables = maps.variables
+
+                                vars
+                                |> Seq.iter (fun (x, _) -> variables[x].V <- ValueSome (variables[x].A + (variables[x].B - variables[x].A) / 2.))
+
+                                if t <> String.Empty && variables.ContainsKey(t) then 
+                                    tout.Value <- t
+                                    if variables.ContainsKey(t) && variables.ContainsKey(tin.Value) then 
+                                        let c3 = skchart.AsSKChart3()
+                                        skchart.Args.Clear()
+                                        c3.Models.Clear()
+                                        let mutable i = 0
+                                        for model in models do
+                                            match model with
+                                            | RawModel3 (tx,ty,tz,m) -> if tx = t && tin.Value = ty then c3.Models.Add(m)
+                                            | TeXModel (tex,f,b,c,s) when tex.Contains(t) && tex.Contains(tin.Value) ->
+                                                let m = Model3.createEmpty ChartType.Points 20 20 (SKColor(uint32 c)) s
+                                                evalModel3 maps tout.Value tin.Value b m
+                                                c3.Models.Add(m)
+                                                let arg = (tex,i,b)
+                                                skchart.Args.Add(arg) |> ignore
+                                                i <- i + 1
+                                            | _ -> ()
+                                        c3.XImg <- Converter.image tout.Value 
+                                        c3.YImg <- Converter.image tin.Value 
+                                        c3.ResetBounds()
+                                        c3.Update()
+                                        // printfn "C3-bounds: %A" c3.Bounds
+                                        
+                                    elif variables.ContainsKey(t) then 
+                                        let c2 = skchart.AsSKChart2() 
+                                        skchart.Args.Clear()
+                                        c2.Models.Clear()
+                                        let mutable i = 0
+                                        for model in models do
+                                            match model with
+                                            | RawModel2 (tx, ty, m) -> if tx = t then c2.Models.Add(m)
+                                            | TeXModel (tex,f,b,c,s) when tex.Contains(t) -> 
+                                                let (ExprTree.Assignment (n,e)) = f                                                
+                                                let m = Model2.createEmpty ChartType.Line 100 (SKColor(uint32 c)) s
+                                                evalModel2 maps t b m
+                                                m.name <- n
+                                                c2.Models.Add(m)
+                                                let arg = (tex,i,b)
+                                                skchart.Args.Add(arg) |> ignore
+                                                i <- i + 1
+                                            | _ -> ()
+                                        c2.XImg <- Converter.image tout.Value 
+                                        c2.ResetBounds()
+                                        c2.Update()   
+                                        // printfn "C2-bounds: %A" c2.Bounds
+                                        
+                                    else
+                                        skchart.AsSKChart2() |> ignore
+
+                                    // models
+                                    // |> Seq.filter (function | TeXModel _ -> true | _ -> false)
+                                    // |> Seq.map (function | TeXModel (tex,_,_,_,_) -> tex | _ -> failwith "...")
+                                    // |> List.ofSeq 
+                                    // |> tex_fns.Set
+
+                        )
+                    ]
+                    Border.create [Border.height 20; Border.width 200]                    
+                ]
+            ] :> IView
+        )
+
+    // let FnNotationComponent (i:int) (s:string) (notation:IReadable<bool>) =
+    let FnNotationComponent (s:string) (notation:IReadable<bool>) =
         Component(fun ctx ->
             let notation = ctx.usePassedRead notation
             StackPanel.create [
@@ -239,7 +225,7 @@ module Views =
                     TextBlock.create [
                         TextBlock.verticalAlignment VerticalAlignment.Center
                         TextBlock.width 40
-                        TextBlock.text ($"{i + 1}: ")
+                        // TextBlock.text ($"{i + 1}: ")
                     ]
                     match notation.Current with
                     | true -> 
@@ -253,45 +239,118 @@ module Views =
                         ]                      
                 ]
             ]
+            :> IView
         )
+      
 
+    let ConstantsView (constants:seq<string * float>) = 
+        ListBox.create [
+            ListBox.maxHeight 150
+            ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
+            ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
+            ListBox.dataItems constants
+            ListBox.itemTemplate (
+                DataTemplateView<string * float>.create (fun (s, c) ->
+                    Grid.create [
+                        Grid.columnDefinitions "1*, 1*"
+                        Grid.children [
+                            Image.create [
+                                Image.stretch Media.Stretch.None 
+                                Image.column 0
+                                Image.source (Converter.convertSymbol s)
+                            ]
+                            TextBlock.create [
+                                TextBlock.column 1
+                                TextBlock.text $"{c}"
+                            ]
+                        ]
+                    ]
+                )
+            )
+        ]
+    
+    let VariablesView (variables:seq<string * Variable>) =
+        ListBox.create [
+            ListBox.maxHeight 150
+            ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
+            ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
+            ListBox.dataItems variables
+            ListBox.itemTemplate (
+                DataTemplateView<string * Variable>.create (fun (s, v) -> 
+                    Grid.create [
+                        Grid.columnDefinitions "1*, 1*, 1*"
+                        Grid.children [
+                            Image.create [
+                                Image.stretch Media.Stretch.None 
+                                Image.column 0
+                                Image.source (Converter.convertSymbol s)
+                            ]
+                            TextBlock.create [
+                                TextBlock.column 1
+                                TextBlock.text $"{v.A}"
+                            ]
+                            TextBlock.create [
+                                TextBlock.column 2
+                                TextBlock.text $"{v.B}"                                                    
+                            ]
+                        ]
+                    ]    
+                )
+            )                               
+        ]                            
+        
+    let FunctionsView (functions:seq<string * Binder.BoundExpr>) =
+        ListBox.create [
+            ListBox.maxHeight 150
+            ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
+            ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
+            ListBox.dataItems functions
+            ListBox.itemTemplate (
+                DataTemplateView<string * Binder.BoundExpr>.create (fun (s,fn) -> 
+                    match fn with
+                    | Binder.Assignment (l ,r) ->
+                        Image.create [
+                            Image.stretch Media.Stretch.None 
+                            Image.source (Converter.convertSymbol l)
+                        ] 
+                    | _ -> Image.create []
+                )
+            )                               
+        ]                            
+    
+    
 
     let view2 (maps:Maps, models':list<string * Model>) =
         Component(fun ctx ->
-            models' |> List.iter (fun (n,m) -> m.Name <- n)
-            let (names,models) = List.unzip models'
-            let tex_models = texModels models
-            let raw_models = rawModels models            
-            let c = new SKChart2([])
-            let chart = c
-            // for m in raw_models do chart.AttachModel m
-            for m in raw_models do chart.AddModel m
-            // for (tex, f, b, m) in tex_models do chart.AttachModel m            
-            for (tex, f, b, m) in tex_models do chart.AddModel m            
-            chart.Update()
+            let (names,models) = models' |> Array.ofList |> Array.unzip
+
+            let tex_models =
+                models 
+                |> Array.filter (function | TeXModel _ -> true | _ -> false)
+                |> Array.map (function | TeXModel (tex,f,b,c,s) -> (tex,f,b,c,s) | _ -> failwith "model is not texmodel")
             
             let cons_strs = 
                 tex_models
-                |> Array.map (fun (tex, f, b, m) -> ExprTree.constants f)
+                |> Array.map (fun (_,f,_,_,_) -> ExprTree.constants f)
                 |> Array.reduce (fun x y -> Array.concat [x; y])
                 |> Array.map (fun x -> x.Value)
                 |> Array.distinct
         
             let symbols_strs = 
                 tex_models
-                |> Array.map (fun (tex, f, b, m) -> ExprTree.variables f)
+                |> Array.map (fun (_,f,_,_,_) -> ExprTree.variables f)
                 |> Array.reduce (fun x y -> Array.concat [x; y])
                 |> Array.map (fun x -> x.Value)
                 |> Array.distinct
             
             let _cons =
                 cons_strs
-                |> Array.filter (fun x -> maps.constants.ContainsKey x)
+                |> Array.filter (maps.constants.ContainsKey)
                 |> Array.map (fun x -> x,maps.constants[x])
 
             let _vars = 
                 symbols_strs 
-                |> Array.filter (fun x -> maps.variables.ContainsKey x) 
+                |> Array.filter (maps.variables.ContainsKey) 
                 |> Array.map (fun x -> x,maps.variables[x])
 
             let _fns =
@@ -299,16 +358,18 @@ module Views =
                 |> Array.filter (fun x -> maps.functions.ContainsKey x)
                 |> Array.map (fun x -> x,maps.functions[x])
 
-            let tex_strs_i = 
+            let _tex_strs_i = 
                 tex_models
-                |> Array.map (fun (tex,_,_,_) -> tex)
-                |> Array.indexed
+                |> Array.map (fun (tex,_,_,_,_) -> tex)
+                |> List.ofArray
+                // |> Array.indexed
 
-            let cons = ctx.useState _cons
-            let vars = ctx.useState _vars
-            let fns = ctx.useState _fns            
-            let target = ctx.useState String.Empty
+            let target_x = ref String.Empty
+            let target_y = ref String.Empty
+            
             let notation = ctx.useState true
+            let tex_fns  = ctx.useState _tex_strs_i
+            let skchart = new SKChartControl()
         
             DockPanel.create [
                 DockPanel.lastChildFill true
@@ -324,131 +385,54 @@ module Views =
                                 ToggleButton.isChecked notation.Current
                                 ToggleButton.onClick (fun _ -> notation.Set (not (notation.Current)))
                             ]
-                            TextBlock.create [TextBlock.text "Constants:"]
-                            ListBox.create [
-                                ListBox.maxHeight 150
-                                ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems _cons
-                                ListBox.itemTemplate (
-                                    DataTemplateView<string * float>.create (fun (s, c) ->
-                                        Grid.create [
-                                            Grid.columnDefinitions "1*, 1*"
-                                            Grid.children [
-                                                Image.create [
-                                                    Image.stretch Media.Stretch.None 
-                                                    Image.column 0
-                                                    Image.source (Converter.convertSymbol s)
-                                                ]
-                                                TextBlock.create [
-                                                    TextBlock.column 1
-                                                    TextBlock.text $"{c}"
-                                                ]
-                                            ]
-                                        ]
-                                    )
+                            
+                            if _cons.Length > 0 then
+                                TextBlock.create [TextBlock.text "Constants:"]
+                                ConstantsView _cons
+                                Border.create [Border.height 20; Border.width 200]
+
+                            if _vars.Length > 0 then 
+                                TextBlock.create [TextBlock.text "Variables:"]
+                                VariablesView _vars
+                                Border.create [Border.height 20; Border.width 200]
+                            
+                            if _fns.Length > 0 then
+                                TextBlock.create [TextBlock.text "functions:"]
+                                FunctionsView _fns
+                                Border.create [Border.height 20; Border.width 200]
+
+                            ComboBoxComponent("select target-x", maps, _vars, target_x, target_y, skchart, models, tex_fns)
+                            ComboBoxComponent("select target-y", maps, _vars, target_y, target_x, skchart, models, tex_fns)
+
+                            Slider.create [
+                                Slider.margin (Thickness(0.,0.5))
+                                Slider.width 120
+                                Slider.minimum -45
+                                Slider.maximum 45
+                                Slider.value 0
+                                Slider.onValueChanged(fun v -> 
+                                    if skchart.IsSKChart3 then
+                                        let c3 = skchart.AsSKChart3()
+                                        c3.Camera.Elevation <- float32 v
+                                        c3.Update()
                                 )
                             ]
-
-                            Border.create [Border.height 20; Border.width 200]
-                            TextBlock.create [TextBlock.text "Variables:"]
-                            ListBox.create [
-                                ListBox.maxHeight 150
-                                ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems _vars
-                                ListBox.itemTemplate (
-                                    DataTemplateView<string * Variable>.create (fun (s, v) -> 
-                                        Grid.create [
-                                            Grid.columnDefinitions "1*, 1*, 1*"
-                                            Grid.children [
-                                                Image.create [
-                                                    Image.stretch Media.Stretch.None 
-                                                    Image.column 0
-                                                    Image.source (Converter.convertSymbol s)
-                                                ]
-                                                TextBlock.create [
-                                                    TextBlock.column 1
-                                                    TextBlock.text $"{v.A}"
-                                                ]
-                                                TextBlock.create [
-                                                    TextBlock.column 2
-                                                    TextBlock.text $"{v.B}"                                                    
-                                                ]
-                                            ]
-                                        ]    
-                                    )
-                                )                               
-                            ]                            
-                            
-                            Border.create [Border.height 20; Border.width 200]
-                            TextBlock.create [TextBlock.text "functions:"]
-                            ListBox.create [
-                                ListBox.maxHeight 150
-                                ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems _fns
-                                ListBox.itemTemplate (
-                                    DataTemplateView<string * Binder.BoundExpr>.create (fun (s,fn) -> 
-                                        match fn with
-                                        | Binder.Assignment (l ,r) ->
-                                            Image.create [
-                                                Image.stretch Media.Stretch.None 
-                                                Image.source (Converter.convertSymbol l)
-                                            ] 
-                                        | _ -> Image.create []
-                                    )
-                                )                               
-                            ]                            
-                            
-                            Border.create [Border.height 20; Border.width 200]
-                            TextBlock.create [TextBlock.text "select target:"]
-                            ComboBox.create [
-                                ComboBox.width 150
-                                ComboBox.dataItems _vars
-                                ComboBox.itemTemplate (
-                                    DataTemplateView<string * Variable>.create (fun (s,v) ->
-                                        Image.create [
-                                            Image.stretch Media.Stretch.None 
-                                            Image.source (Converter.convertSymbol s)
-                                        ]        
-                                    )
-                                )
-                                ComboBox.onSelectedItemChanged (fun x -> 
-                                    if x <> null then
-                                        let (t, v) = x :?> (string * Variable)                                        
-
-                                        _vars
-                                        |> Array.except [|(t, v)|]
-                                        |> Array.map (fun (x, _) -> x,maps.variables[x])
-                                        |> vars.Set
-
-                                        // when event triggers, sliders are created anew
-                                        // restore the values of the variables map
-                                        // to min to match sliders values
-                                        _vars
-                                        |> Seq.iter (fun (x, _) -> 
-                                            maps.variables[x].V <- ValueSome (maps.variables[x].A + (maps.variables[x].B - maps.variables[x].A) / 2.)
-                                        )
-                                       
-                                        for (tex, f, b, m) in tex_models do
-                                            if t <> String.Empty then
-                                                evalModel maps t b m
-
-                                        // chart.NormalizeModels()
-                                        chart.Update()
-                                        chart.XImg <- (Converter.image t)        
-                                        target.Set t
+                            Slider.create [
+                                Slider.margin (Thickness(0.,0.5))
+                                Slider.width 120
+                                Slider.minimum -90
+                                Slider.maximum 90
+                                Slider.value 0
+                                Slider.onValueChanged(fun v -> 
+                                    if skchart.IsSKChart3 then
+                                        let c3 = skchart.AsSKChart3()
+                                        c3.Camera.Azimuth <- float32 v
+                                        c3.Update()
                                 )
                             ]
-                            
-                            Border.create [Border.height 20; Border.width 200]
-                            Button.create [
-                                Button.content "capture_vert"
-                                Button.onClick (fun _ -> ())
-                            ]                            
                         ]
                     ]
+                    // right-side of the panel, that contains the mathematical notations
                     Grid.create [
                         Grid.dock Dock.Right
                         Grid.maxWidth 340
@@ -459,10 +443,11 @@ module Views =
                                 ListBox.column 1
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems [for (i,s) in tex_strs_i -> ComponentFnNotation i s notation]
+                                ListBox.dataItems [for tex in tex_fns.Current -> FnNotationComponent tex notation]
                             ]                            
                         ]
                     ]
+                    // bottom-side of the panel, that contains the sliders
                     Grid.create [
                         Grid.dock Dock.Bottom
                         Grid.maxHeight 200
@@ -473,35 +458,14 @@ module Views =
                                 ListBox.background "White"
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems [for i in vars.Current -> ComponentSlider i maps tex_models target chart]
+                                ListBox.dataItems [for s in _vars -> SliderComponent s maps skchart target_x target_y]
                             ]
                         ]
                     ]
-                    ContentControl.create [
-                        ContentControl.content (new SKChart2Control(c))
-                        ContentControl.onSizeChanged (fun s -> 
-                            c.W <- float32 (s.NewSize.Width)
-                            c.H <- float32 (s.NewSize.Height)
-                        )
-                    ]
-                    // ViewBuilder.Create<SKChart2DControl> [
-                        // SKChart2DControl.width 800
-                        // SKChart2DControl.chart chart
-                        // SKChart2DControl.clipToBounds true
-                        // SKChart2DControl.onSizeChanged (fun s -> 
-                        //     chart.Width <- s.NewSize.Width
-                        //     chart.Height <- s.NewSize.Height
-                        //     chart.XImg <- Converter.image target.Current
-                        // )
-                    // ]           
+                    ContentControl.create [ContentControl.content skchart]
                 ]
             ]
         )
-
-    let view2' (maps:Maps, models:list<string * Model>) =
-        // models |> List.iter (fun (n,m) -> m.Name <- n)
-        // let (names,models') = List.unzip models
-        view2(maps, models)
 
 
     type MainWindow() =

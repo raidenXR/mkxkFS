@@ -1,13 +1,19 @@
 namespace SKCharts
 
 open System
+open System.Collections.Generic
 open System.Numerics
 open SkiaSharp
 
 
+type ISKChart =
+    abstract member Update: unit -> unit
+    abstract member Draw: SKCanvas -> unit    
+
+
 type SKChart2(models':list<string * Model2.Model>) =
     
-    let mutable bounds: Model2.Bounds = {xmin = 0.; xmax = 1.; ymin = 0.; ymax = 1.}
+    let mutable bounds = Model2.Bounds.Default
 
     let axis   = [|Vector2(0f,0f); Vector2(1f,0f); Vector2(0f,0f); Vector2(0f,1f)|]
     let grid   = Array.zeroCreate<Vector2> 20
@@ -26,11 +32,11 @@ type SKChart2(models':list<string * Model2.Model>) =
     let mutable legend = SKPoint()
     let mutable ximg: SKImage = null
     let mutable yimg: SKImage = null
-    let mutable xtitle = String.Empty
-    let mutable ytitle = String.Empty
+    let mutable xtitle = "X"
+    let mutable ytitle = "Y"
     let mutable is_disposed = false
 
-    let models = System.Collections.Generic.List<Model2.Model>()
+    let models = List<Model2.Model>()
 
     let paint_black = new SKPaint(
         Color = SKColors.Black, 
@@ -103,13 +109,11 @@ type SKChart2(models':list<string * Model2.Model>) =
 
     let update_gridlines () = 
         let mutable i = 0
-        let mutable dv = 0.2f
-        while i < 20 do
+        for dv in 0.2f..0.2f..1f do
             grid_pts[i + 0] <- cast (Vector2.Transform(Vector2(dv, 0f), transform))
             grid_pts[i + 1] <- cast (Vector2.Transform(Vector2(dv, 1f), transform))
             grid_pts[i + 2] <- cast (Vector2.Transform(Vector2(0f, dv), transform))
             grid_pts[i + 3] <- cast (Vector2.Transform(Vector2(1f, dv), transform))
-            dv <- dv + 0.2f
             i  <- i + 4
 
 
@@ -119,32 +123,23 @@ type SKChart2(models':list<string * Model2.Model>) =
 
     let update_ticks () = 
         let mutable i = 0
-        let mutable dv = 0.2f
-        while dv < 1.0f do
+        for dv in 0.2f..0.2f..1f do
             tick_pts[i + 0] <- cast (Vector2.Transform(Vector2(dv, 0f), transform))
             tick_pts[i + 1] <- cast (Vector2.Transform(Vector2(dv, -0.05f), transform))
             tick_pts[i + 2] <- cast (Vector2.Transform(Vector2(0f, dv), transform))
             tick_pts[i + 3] <- cast (Vector2.Transform(Vector2(-0.05f, dv), transform))
-            dv <- dv + 0.2f
             i  <- i + 4
         
 
     let update_labels () = 
         let b = bounds
-        let mutable dv = 0.2f
         let mutable i = 0
-        while dv < 1.0f do
+        for dv in 0.2f..0.2f..1f do
             label_vals[i + 0] <- (float dv) * (b.xmax - b.xmin) + b.xmin
             label_vals[i + 1] <- (float dv) * (b.ymax - b.ymin) + b.ymin
             label_pts[i + 0]  <- cast (Vector2.Transform(Vector2(dv - 0.05f, -0.1f), transform))
             label_pts[i + 1]  <- cast (Vector2.Transform(Vector2(-0.1f - 0.05f, dv), transform))
-            dv <- dv + 0.2f
             i  <- i + 2
-        label_vals[i + 0] <- 1. * (b.xmax - b.xmin) + b.xmin
-        label_vals[i + 1] <- 1. * (b.ymax - b.ymax) + b.ymin
-        label_pts[i + 0]  <- cast (Vector2.Transform(Vector2(1f, -0.1f), transform))
-        label_pts[i + 1]  <- cast (Vector2.Transform(Vector2(-0.1f, 1f), transform))
-        i <- i + 2
         label_pts_slice <- Memory<SKPoint>(label_pts, 0, i)
 
 
@@ -153,10 +148,10 @@ type SKChart2(models':list<string * Model2.Model>) =
     
 
     let draw_labels (canvas:SKCanvas) = 
-        let slice  = Span(label_pts)
-        let len = label_pts.Length - 2
+        let slice  = label_pts_slice.Span
+        let len = slice.Length - 2
 
-        for i in 0..2..len - 1 do
+        for i in 0..2..len - 2 do
              canvas.DrawText(label_vals[i + 0].ToString("N3"), slice[i + 0].X, slice[i + 0].Y, paint_black)
              canvas.DrawText(label_vals[i + 1].ToString("N3"), slice[i + 1].X, slice[i + 1].Y, paint_black)
 
@@ -184,6 +179,7 @@ type SKChart2(models':list<string * Model2.Model>) =
     let draw_models (canvas:SKCanvas) =
         for m in models do
             paint_model.Color <- m.color
+            paint_model.StrokeWidth <- m.strokeWidth
             match m.kind with
             | ChartType.Line -> 
                 canvas.DrawPoints(SKPointMode.Lines, m.points, paint_model)
@@ -204,6 +200,26 @@ type SKChart2(models':list<string * Model2.Model>) =
                 paint_silver.Dispose()
                 paint_model.Dispose()
             is_disposed <- true
+
+    interface ISKChart with
+        member this.Update() =
+            update_gridlines ()
+            update_axes ()
+            update_ticks ()
+            update_models ()
+            update_labels ()
+
+            let t = Matrix3x2.CreateTranslation(0.6f, 0.6f) * Matrix3x2.CreateScale(0.5f, 0.5f)
+            let p = Vector2.Transform(Vector2(1f, 0.8f), t)
+            legend <- cast p
+
+        member this.Draw(canvas:SKCanvas) =
+            canvas.DrawPoints(SKPointMode.Lines, grid_pts, paint_silver)
+            canvas.DrawPoints(SKPointMode.Lines, axis_pts, paint_black)
+            draw_labels canvas
+            draw_models canvas
+            canvas.DrawPoints(SKPointMode.Lines, tick_pts, paint_black)
+            draw_legend canvas
 
     member this.W
         with get() = w
@@ -237,6 +253,15 @@ type SKChart2(models':list<string * Model2.Model>) =
 
     member this.RemoveModelAt(idx:int) = remove_model_at idx
 
+    member this.Models with get() = (models :> IList<Model2.Model>)
+
+    member this.ResetBounds() =
+        if models.Count >= 1 then
+            let m0 = models[0]
+            let b0 = Model2.Bounds.ofArray m0.xvalues m0.yvalues 
+            bounds <- b0
+            for m in models do
+                bounds <- Model2.Bounds.compare (Model2.Bounds.ofArray m.xvalues m.yvalues) bounds
     
     member this.UpdateModels () = 
         update_models ()        
@@ -267,8 +292,11 @@ type SKChart2(models':list<string * Model2.Model>) =
 
 
 type SKChart3(models':list<Model3.Model>, colormap:Colormap) = 
+
+    let mutable bounds = Model3.Bounds.Default
     let colorbar = new Colorbar(colormap)
     let camera = Model3.Camera(30f, -37.5f)
+    
     let axis = [|
         Vector3(0f, 0f, 0f)
         Vector3(1f, 0f, 0f)
@@ -288,16 +316,15 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
     let label_vals = Array.zeroCreate<float> 100
     let mutable label_pts_slice = Memory<SKPoint>(label_pts)
 
-    let mutable bounds: Model3.Bounds = {xmin = 0; xmax = 1; ymin = 0; ymax = 1; zmin = 0; zmax = 1}
     let mutable is_disposed = false
     let models = System.Collections.Generic.List<Model3.Model>()
 
     let mutable w = 800f
     let mutable h = 600f
 
-    let mutable xtitle = String.Empty
-    let mutable ytitle = String.Empty
-    let mutable ztitle = String.Empty
+    let mutable xtitle = "X"
+    let mutable ytitle = "Y"
+    let mutable ztitle = "Z"
 
     let mutable ximg: SKImage = null
     let mutable yimg: SKImage = null
@@ -551,9 +578,11 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
             match m.kind with
             | ChartType.Points ->
                 paint_model.Color <- m.colors[0]
+                paint_model.StrokeWidth <- m.strokeWidth
                 canvas.DrawPoints(SKPointMode.Points, m.points, paint_model)
             | ChartType.Line ->
                 paint_model.Color <- m.colors[0]
+                paint_model.StrokeWidth <- m.strokeWidth
                 canvas.DrawPoints(SKPointMode.Lines, m.points, paint_model)
             | ChartType.Surface ->
                 canvas.DrawVertices(SKVertexMode.Triangles, m.points, null, m.colors, m.indices, paint_model)
@@ -574,6 +603,27 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
                 paint_model.Dispose()
                 (colorbar :> IDisposable).Dispose()
             is_disposed <- true
+
+    interface ISKChart with
+        member this.Update() =
+            update_grid ()
+            update_axis ()
+            update_ticks ()
+            update_models ()
+            update_labels ()
+            colorbar.Bounds <- bounds
+            colorbar.W <- w
+            colorbar.H <- h
+            colorbar.Update()
+            camera.Resync <- false
+
+        member this.Draw(canvas:SKCanvas) =
+            canvas.DrawPoints(SKPointMode.Lines, grid_pts, paint_silver)
+            canvas.DrawPoints(SKPointMode.Lines, axis_pts, paint_black)
+            canvas.DrawPoints(SKPointMode.Lines, tick_pts, paint_black)
+            draw_labels (canvas)
+            draw_models (canvas)
+            colorbar.Draw(canvas)        
 
     member this.W
         with get() = w
@@ -609,6 +659,18 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
 
     member this.RemoveModelAt(idx:int) = remove_model_at idx
 
+    member this.Models with get() = (models :> IList<Model3.Model>)
+
+    member this.ResetBounds() =
+        if models.Count >= 1 then
+            let m0 = models[0]
+            let b0 = Model3.Bounds.ofArray m0.xvalues m0.yvalues m0.zvalues
+            bounds <- b0
+            for m in models do
+                bounds <- Model3.Bounds.compare (Model3.Bounds.ofArray m.xvalues m.yvalues m.zvalues) bounds
+
+    member this.UpdateModels () = 
+        update_models ()        
 
     member this.Update() =
         update_grid ()
@@ -617,6 +679,8 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
         update_models ()
         update_labels ()
         colorbar.Bounds <- bounds
+        colorbar.W <- w
+        colorbar.H <- h
         colorbar.Update()
         camera.Resync <- false
         

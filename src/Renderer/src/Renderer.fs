@@ -37,8 +37,6 @@ type Renderer<'T when 'T :> Component and 'T : (new : unit -> 'T)>() =
         ignore <| AppBuilder
             .Configure<App<'T>>()
             .UsePlatformDetect()
-            .WithInterFont()
-            .LogToTrace(areas = Array.empty)
             .StartWithClassicDesktopLifetime([||])
 
 
@@ -52,8 +50,7 @@ type Renderer() =
         ignore <| AppBuilder
             .Configure<Views.App>()
             .UsePlatformDetect()
-            .WithInterFont()
-            .LogToTrace(areas = Array.empty)
+            .UseSkia()
             .StartWithClassicDesktopLifetime([||])
 
         let rec set_window () =

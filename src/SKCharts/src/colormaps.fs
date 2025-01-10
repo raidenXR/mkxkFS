@@ -188,6 +188,14 @@ type Colorbar(colormap:Colormap) =
     member x.Colormap
         with get() = ReadOnlySpan<SKColor>(colormap)
     
+    member x.W 
+        with get() = w
+        and set(value) = w <- value
+
+    member x.H 
+        with get() = h
+        and set(value) = h <- value
+    
 
     member x.Update () =
         let transform = Matrix3x2.CreateTranslation(0.7f, 0.0f) * Matrix3x2.CreateScale(0.5f, 0.5f)

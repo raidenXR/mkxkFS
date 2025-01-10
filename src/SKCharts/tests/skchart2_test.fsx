@@ -87,7 +87,7 @@ let viewTest() =
         let textbox = ctx.useState<TextBox> null
         let x = [|for i in 0..100 -> float i|]
         let y = [|for i in 0..100 -> float i|]
-        let m = Model2.create ChartType.Line x y (SKColors.Blue)
+        let m = Model2.create ChartType.Line x y (SKColors.Blue) 1.8f
         let c = new SKChart2([])
         c.AddModel m
         c.Update()
