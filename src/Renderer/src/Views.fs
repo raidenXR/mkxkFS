@@ -10,6 +10,8 @@ open Avalonia.Interactivity
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
 open Avalonia.Layout
+open Avalonia.Rendering
+open Avalonia.VisualTree
 
 open System
 open MKXK
@@ -59,64 +61,106 @@ module Views =
     type ContentControl with
         static member onSizeChanged<'t when 't :> ContentControl>(func: SizeChangedEventArgs -> unit, ?subPatchOptions) :IAttr<'t> =
             AttrBuilder<'t>.CreateSubscription<SizeChangedEventArgs>(ContentControl.SizeChangedEvent, func, ?subPatchOptions = subPatchOptions)
-           
-    type SKChartView =
-        | Chart2 = 0
-        | Chart3 = 1
 
-    let SliderComponent 
-        (value:string * Variable) 
+    type SKChartControl with
+        static member create(attrs: IAttr<SKChartControl> list): IView<SKChartControl> =
+            ViewBuilder.Create<SKChartControl>(attrs)
+
+        static member chartProperty : StyledProperty<SKChart> =
+            AvaloniaProperty.Register<SKChartControl, SKChart>("SKChart")
+           
+
+        static member backgroundProperty : StyledProperty<SKColor> =
+            AvaloniaProperty.Register<SKChartControl, SKColor>("Background")
+            
+        static member chart<'t when 't :> SKChartControl>(value:SKChart) : IAttr<'t> =
+            AttrBuilder<'t>.CreateProperty<SKChart>(SKChartControl.chartProperty, value, ValueNone)
+           
+        static member background<'t when 't :> SKChartControl>(value:SKColor) : IAttr<'t> =
+            AttrBuilder<'t>.CreateProperty<SKColor>(SKChartControl.backgroundProperty, value, ValueNone)
+
+
+    let SlidersComponent 
+        // (value:string * Variable) 
         (maps:Maps) 
-        (skchart:SKChartControl)
+        (skchart:SKChart)
+        (vars_list:IReadable<list<string * Variable>>)
         (tx:ref<string>)
-        (ty:ref<string>) =
-        Component(fun ctx ->
-            let (s,v) = value
-            let variable = ctx.useState (match v.V with | ValueSome _v -> _v | ValueNone -> v.A + (v.B - v.A) / 2.0)
+        (ty:ref<string>) = Component.create("sliders", fun ctx ->
+            let vars_list = ctx.usePassedRead vars_list
+            // let (s,v) = value
+            // let variable = ctx.useState (match v.V with | ValueSome _v -> _v | ValueNone -> v.A + (v.B - v.A) / 2.0)
+
+            ctx.attrs [
+                Component.dock Dock.Bottom
+            ]
 
             Grid.create [
-                Grid.columnDefinitions "100, 140, 200"
-                Grid.verticalScrollBarVisibility ScrollBarVisibility.Auto
-                Grid.children [
-                    Image.create [
-                        Image.column 0
-                        Image.stretch Media.Stretch.None
-                        Image.horizontalAlignment HorizontalAlignment.Left
-                        Image.source (Converter.convertSymbol s)
-                    ]
-                    Slider.create [
-                        Slider.column 1
-                        Slider.width 120
-                        Slider.minimum v.A
-                        Slider.maximum v.B
-                        Slider.value variable.Current    
-                        Slider.onValueChanged (fun d ->
-                            if maps.variables.ContainsKey s then
-                                maps.variables[s].V <- ValueSome d
+                // Grid.dock Dock.Bottom
+                Grid.maxHeight 200
+                Grid.margin (Thickness(0.0, 0.0, 10.0, 10.0))
+                Grid.children [                            
+                    ListBox.create [
+                        ListBox.column 0
+                        ListBox.background "White"
+                        ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
+                        ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
+                        // ListBox.dataItems [for s in vars_list.Current -> SliderComponent s maps skchart target_x target_y]
+                        ListBox.dataItems vars_list.Current
+                        ListBox.itemTemplate (
+                            DataTemplateView<string * Variable>.create (fun (s,v) -> 
+                                let V = match v.V with | ValueSome _v -> _v | ValueNone -> v.A + (v.B - v.A) / 2.0
+                                // let slider_value = ctx.useState V
+                                Grid.create [
+                                    Grid.columnDefinitions "100, 140, 200"
+                                    Grid.verticalScrollBarVisibility ScrollBarVisibility.Auto
+                                    Grid.children [
+                                        Image.create [
+                                            Image.column 0
+                                            Image.stretch Media.Stretch.None
+                                            Image.horizontalAlignment HorizontalAlignment.Left
+                                            Image.source (Converter.convertSymbol s)
+                                        ]
+                                        Slider.create [
+                                            Slider.column 1
+                                            Slider.width 120
+                                            Slider.minimum v.A
+                                            Slider.maximum v.B
+                                            Slider.value V
+                                            Slider.onValueChanged (fun d ->
+                                                if maps.variables.ContainsKey s then
+                                                    maps.variables[s].V <- ValueSome d
 
-                                if skchart.IsSKChart2 then
-                                    let c2 = skchart.AsSKChart2()
-                                    for ob in skchart.Args do
-                                        let (tex,i,b) = (ob :?> string * int * Binder.BoundExpr)
-                                        evalModel2 maps tx.Value b (c2.Models[i])
-                                    c2.Update()
-                                if skchart.IsSKChart3 then
-                                    let c3 = skchart.AsSKChart3()
-                                    for ob in skchart.Args do
-                                        let (tex,i,b) = (ob :?> string * int * Binder.BoundExpr)
-                                        evalModel3 maps tx.Value ty.Value b (c3.Models[i])
-                                    c3.Update()                            
-                            variable.Set d
+                                                    if skchart.IsSKChart2 then
+                                                        let c2 = skchart.AsSKChart2()
+                                                        for ob in skchart.Args do
+                                                            let (tex,i,b) = (ob :?> string * int * Binder.BoundExpr)
+                                                            evalModel2 maps tx.Value b (c2.Models[i])
+                                                        c2.Update()
+                                                    if skchart.IsSKChart3 then
+                                                        let c3 = skchart.AsSKChart3()
+                                                        for ob in skchart.Args do
+                                                            let (tex,i,b) = (ob :?> string * int * Binder.BoundExpr)
+                                                            evalModel3 maps tx.Value ty.Value b (c3.Models[i])
+                                                        c3.Update()                            
+                                                // slider_value.Set d
+                                            )
+                                        ]
+                                        TextBlock.create [
+                                            TextBlock.column 2
+                                            TextBlock.width 100
+                                            TextBlock.maxWidth 100
+                                            // TextBlock.text (slider_value.Current.ToString("N4"))
+                                            TextBlock.text (V.ToString("N4"))
+                                        ]
+                                    ]
+                                ]
+                            
+                            )
                         )
                     ]
-                    TextBlock.create [
-                        TextBlock.column 2
-                        TextBlock.width 100
-                        TextBlock.maxWidth 100
-                        TextBlock.text (variable.Current.ToString("N4"))
-                    ]
                 ]
-            ]
+            ] :> IView
         )
 
     let ComboBoxComponent (
@@ -125,10 +169,11 @@ module Views =
         vars:array<string * Variable>, 
         tout:ref<string>, 
         tin:ref<String>,
-        skchart:SKChartControl, 
+        skchart:SKChart, 
         models:seq<Model>,
-        tex_fns:IWritable<list<string>>) =
-        Component.create("combobox", fun ctx ->
+        vars_list:IWritable<list<string * Variable>>,
+        tex_fns:IWritable<list<string>>) = Component.create("combobox", fun ctx ->
+            let vars_list = ctx.usePassed vars_list
             let tex_fns = ctx.usePassed tex_fns
             StackPanel.create [
                 StackPanel.children [
@@ -154,6 +199,11 @@ module Views =
 
                                 if t <> String.Empty && variables.ContainsKey(t) then 
                                     tout.Value <- t
+                                    let tex_strs = 
+                                        models
+                                        |> Seq.filter (function | TeXModel _ -> true | _ -> false)
+                                        |> Seq.map (function | TeXModel (tex,_,_,_,_) -> tex | _ -> failwith "...")
+                                    
                                     if variables.ContainsKey(t) && variables.ContainsKey(tin.Value) then 
                                         let c3 = skchart.AsSKChart3()
                                         skchart.Args.Clear()
@@ -175,6 +225,16 @@ module Views =
                                         c3.ResetBounds()
                                         c3.Update()
                                         // printfn "C3-bounds: %A" c3.Bounds
+                                        let tex_strs_subset = tex_strs |> Seq.filter (function tex -> tex.Contains(t) && tex.Contains(tin.Value))
+                                        let vars = vars |> Array.filter (fun (s,v) -> s <> tout.Value && s <> tin.Value)
+                                        let vars_subset = [
+                                            for tex in tex_strs_subset do
+                                                for (s0,v0) in vars do
+                                                    if tex.Contains(s0) then yield (s0,v0)
+                                        ]
+                                        ignore vars_subset
+                                        // vars_subset |> vars_list.Set                                     
+                                        // tex_strs_subset |> List.ofSeq |> tex_fns.Set
                                         
                                     elif variables.ContainsKey(t) then 
                                         let c2 = skchart.AsSKChart2() 
@@ -197,16 +257,19 @@ module Views =
                                         c2.XImg <- Converter.image tout.Value 
                                         c2.ResetBounds()
                                         c2.Update()   
-                                        // printfn "C2-bounds: %A" c2.Bounds
-                                        
+                                        // printfn "C2-bounds: %A" c2.Bounds                                        
+                                        let tex_strs_subset = tex_strs |> Seq.filter (function tex -> tex.Contains(t))
+                                        let vars = vars |> Array.filter (fun (s,v) -> s <> tout.Value && s <> tin.Value)
+                                        let vars_subset = [
+                                            for tex in tex_strs_subset do
+                                                for (s0,v0) in vars do
+                                                    if tex.Contains(s0) then yield (s0,v0)
+                                        ]
+                                        ignore vars_subset
+                                        // vars_subset |> vars_list.Set                                     
+                                        // tex_strs_subset |> List.ofSeq |> tex_fns.Set
                                     else
-                                        skchart.AsSKChart2() |> ignore
-
-                                    // models
-                                    // |> Seq.filter (function | TeXModel _ -> true | _ -> false)
-                                    // |> Seq.map (function | TeXModel (tex,_,_,_,_) -> tex | _ -> failwith "...")
-                                    // |> List.ofSeq 
-                                    // |> tex_fns.Set
+                                        skchart.AsSKChart2() |> ignore                                    
 
                         )
                     ]
@@ -216,27 +279,51 @@ module Views =
         )
 
     // let FnNotationComponent (i:int) (s:string) (notation:IReadable<bool>) =
-    let FnNotationComponent (s:string) (notation:IReadable<bool>) =
-        Component(fun ctx ->
+    let FnNotationComponent (notation:IReadable<bool>, tex_fns:IReadable<list<string>>) =
+        Component.create("notation panel", fun ctx ->
             let notation = ctx.usePassedRead notation
-            StackPanel.create [
-                StackPanel.orientation Orientation.Horizontal
-                StackPanel.children [
-                    TextBlock.create [
-                        TextBlock.verticalAlignment VerticalAlignment.Center
-                        TextBlock.width 40
-                        // TextBlock.text ($"{i + 1}: ")
-                    ]
-                    match notation.Current with
-                    | true -> 
-                        Image.create [
-                            Image.stretch Media.Stretch.None
-                            Image.source (Converter.convert true s)
-                        ]
-                    | false ->
-                        SelectableTextBlock.create [
-                            SelectableTextBlock.text s
-                        ]                      
+            let tex_fns  = ctx.usePassedRead tex_fns
+
+            ctx.attrs [
+                Component.dock Dock.Right
+            ]
+            
+            Grid.create [
+                // Grid.dock Dock.Right
+                Grid.maxWidth 340
+                Grid.margin (Thickness(0.0, 0.0, 10.0, 10.0))
+                Grid.children [
+                    ListBox.create [
+                        ListBox.background "White"
+                        ListBox.column 1
+                        ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
+                        ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
+                        ListBox.dataItems tex_fns.Current
+                        ListBox.itemTemplate (
+                            DataTemplateView<string>.create (fun s ->
+                                StackPanel.create [
+                                    StackPanel.orientation Orientation.Horizontal
+                                    StackPanel.children [
+                                        // TextBlock.create [
+                                        //     TextBlock.verticalAlignment VerticalAlignment.Center
+                                        //     TextBlock.width 40
+                                        //     TextBlock.text ($"{i + 1}: ")
+                                        // ]
+                                        match notation.Current with
+                                        | true -> 
+                                            Image.create [
+                                                Image.stretch Media.Stretch.None
+                                                Image.source (Converter.convert true s)
+                                            ]
+                                        | false ->
+                                            SelectableTextBlock.create [
+                                                SelectableTextBlock.text s
+                                            ]                      
+                                    ]
+                                ]                                
+                            )
+                        )
+                    ]                            
                 ]
             ]
             :> IView
@@ -323,6 +410,9 @@ module Views =
     let view2 (maps:Maps, models':list<string * Model>) =
         Component(fun ctx ->
             let (names,models) = models' |> Array.ofList |> Array.unzip
+            let c2 = new SKChart2([])
+            let c3 = new SKChart3([], Colormap.Hot)
+            let skchart = new SKChart(c2,c3)
 
             let tex_models =
                 models 
@@ -369,7 +459,7 @@ module Views =
             
             let notation = ctx.useState true
             let tex_fns  = ctx.useState _tex_strs_i
-            let skchart = new SKChartControl()
+            let vars_list = ctx.useState (List.ofArray _vars)
         
             DockPanel.create [
                 DockPanel.lastChildFill true
@@ -401,9 +491,10 @@ module Views =
                                 FunctionsView _fns
                                 Border.create [Border.height 20; Border.width 200]
 
-                            ComboBoxComponent("select target-x", maps, _vars, target_x, target_y, skchart, models, tex_fns)
-                            ComboBoxComponent("select target-y", maps, _vars, target_y, target_x, skchart, models, tex_fns)
+                            ComboBoxComponent("select target-x", maps, _vars, target_x, target_y, skchart, models, vars_list, tex_fns)
+                            ComboBoxComponent("select target-y", maps, _vars, target_y, target_x, skchart, models, vars_list, tex_fns)
 
+                            // slider for c3 rotation - elevation
                             Slider.create [
                                 Slider.margin (Thickness(0.,0.5))
                                 Slider.width 120
@@ -417,6 +508,7 @@ module Views =
                                         c3.Update()
                                 )
                             ]
+                            // slider for c3 rotation - azimuth
                             Slider.create [
                                 Slider.margin (Thickness(0.,0.5))
                                 Slider.width 120
@@ -433,36 +525,30 @@ module Views =
                         ]
                     ]
                     // right-side of the panel, that contains the mathematical notations
-                    Grid.create [
-                        Grid.dock Dock.Right
-                        Grid.maxWidth 340
-                        Grid.margin (Thickness(0.0, 0.0, 10.0, 10.0))
-                        Grid.children [
-                            ListBox.create [
-                                ListBox.background "White"
-                                ListBox.column 1
-                                ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems [for tex in tex_fns.Current -> FnNotationComponent tex notation]
-                            ]                            
-                        ]
-                    ]
+                    FnNotationComponent(notation, tex_fns)
+                    
                     // bottom-side of the panel, that contains the sliders
-                    Grid.create [
-                        Grid.dock Dock.Bottom
-                        Grid.maxHeight 200
-                        Grid.margin (Thickness(0.0, 0.0, 10.0, 10.0))
-                        Grid.children [                            
-                            ListBox.create [
-                                ListBox.column 0
-                                ListBox.background "White"
-                                ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems [for s in _vars -> SliderComponent s maps skchart target_x target_y]
-                            ]
-                        ]
+                    SlidersComponent maps skchart vars_list target_x target_y 
+
+                    ContentControl.create [
+                        ContentControl.content (new SKChartControl(skchart))
                     ]
-                    ContentControl.create [ContentControl.content skchart]
+
+                    // SKChartControl.create [
+                    //     SKChartControl.width 400
+                    //     SKChartControl.height 400
+                    //     SKChartControl.chart skchart
+                    //     SKChartControl.onSizeChanged (fun s ->
+                    //      if skchart.IsSKChart2 then
+                    //          c2.W <- float32 s.NewSize.Width
+                    //          c2.H <- float32 s.NewSize.Height
+                    //          c2.Update()
+                    //      if skchart.IsSKChart3 then
+                    //          c3.W <- float32 s.NewSize.Width
+                    //          c3.H <- float32 s.NewSize.Height
+                    //          c3.Update()
+                    //      )                                                 
+                    // ]
                 ]
             ]
         )

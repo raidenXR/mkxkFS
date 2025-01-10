@@ -214,6 +214,7 @@ type SKChart2(models':list<string * Model2.Model>) =
             legend <- cast p
 
         member this.Draw(canvas:SKCanvas) =
+            canvas.DrawColor(this.Background)
             canvas.DrawPoints(SKPointMode.Lines, grid_pts, paint_silver)
             canvas.DrawPoints(SKPointMode.Lines, axis_pts, paint_black)
             draw_labels canvas
@@ -254,6 +255,8 @@ type SKChart2(models':list<string * Model2.Model>) =
     member this.RemoveModelAt(idx:int) = remove_model_at idx
 
     member this.Models with get() = (models :> IList<Model2.Model>)
+
+    member val Background = SKColors.White with get, set
 
     member this.ResetBounds() =
         if models.Count >= 1 then
@@ -618,6 +621,7 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
             camera.Resync <- false
 
         member this.Draw(canvas:SKCanvas) =
+            canvas.DrawColor(this.Background)
             canvas.DrawPoints(SKPointMode.Lines, grid_pts, paint_silver)
             canvas.DrawPoints(SKPointMode.Lines, axis_pts, paint_black)
             canvas.DrawPoints(SKPointMode.Lines, tick_pts, paint_black)
@@ -672,6 +676,8 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
     member this.UpdateModels () = 
         update_models ()        
 
+    member val Background = SKColors.White with get, set
+
     member this.Update() =
         update_grid ()
         update_axis ()
@@ -692,3 +698,77 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
         draw_labels (canvas)
         draw_models (canvas)
         colorbar.Draw(canvas)
+
+
+
+/// Composition of SKChart2 and SKChart3, state - pattern(?)
+[<AllowNullLiteral>]
+type SKChart(c2:SKChart2, c3:SKChart3) =
+    let mutable c2 = c2
+    let mutable c3 = c3
+    let tags = new System.Collections.Generic.List<string * int>()
+    let args = new System.Collections.ArrayList()
+    let mutable is_c2 = true
+    let mutable is_c3 = false
+    let mutable is_disposed = false
+
+    new() = new SKChart(new SKChart2([]), new SKChart3([], Colormap.Hot))
+
+    interface IDisposable with
+        member this.Dispose() =
+            if not is_disposed then
+                (c2 :> IDisposable).Dispose()
+                (c3 :> IDisposable).Dispose()
+            is_disposed <- true
+    
+    member this.Tags with get() = tags
+
+    member this.Args with get() = args
+
+    member this.C2 with get() = c2 and set(value) = c2 <- value
+
+    member this.C3 with get() = c3 and set(value) = c3 <- value
+
+    member this.W with get() = if is_c2 then c2.W else c3.W
+
+    member this.H with get() = if is_c2 then c2.H else c3.H
+
+    member this.Bounds2 with get() = c2.Bounds
+
+    member this.Bounds3 with get() = c3.Bounds
+
+    member this.AsSKChart2() = 
+        is_c2 <- true
+        is_c3 <- false
+        c2
+
+    member this.AsSKChart3() =
+        is_c3 <- true
+        is_c2 <- false
+        c3
+
+    member this.IsSKChart2 
+        with get() = is_c2
+        // and set(value) = 
+        //     is_c2 <- value
+        //     is_c3 <- not value
+
+    member this.IsSKChart3 
+        with get() = is_c3
+        // and set(value) = 
+        //     is_c3 <- value
+        //     is_c2 <- not value
+        
+    member this.Background 
+        with get() =
+            if this.IsSKChart2 then c2.Background else c3.Background
+        and set(value) =
+            if this.IsSKChart2 then c2.Background <- value else c3.Background <- value
+
+    member this.Update() =
+        if is_c2 then c2.Update()
+        elif is_c3 then c3.Update()
+
+    member this.Draw(canvas:SKCanvas) =
+        if is_c2 then c2.Draw(canvas)
+        elif is_c3 then c3.Draw(canvas)

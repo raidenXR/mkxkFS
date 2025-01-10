@@ -72,7 +72,11 @@ type Renderer() =
     /// this functions executes in a different thread, letting the main thread non-blocking. 
     member x.RunParallel(componentfn: unit -> Component) =
         let app () = 
-            ignore <| AppBuilder.Configure<Views.App>().UsePlatformDetect().UseSkia().StartWithClassicDesktopLifetime([||])
+            ignore <| AppBuilder
+                .Configure<Views.App>()
+                .UsePlatformDetect()
+                .UseSkia()
+                .StartWithClassicDesktopLifetime([||])
 
         thread <- System.Threading.Thread(app)
         thread.Start()       

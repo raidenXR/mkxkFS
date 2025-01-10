@@ -21,8 +21,56 @@ open Avalonia.VisualTree
 open SKCharts
 
 
-type private CustomDrawOp2(bounds:Rect, noSkia:GlyphRun, skchart:SKChart2) =
-    let noSkia = noSkia.TryCreateImmutableGlyphRunReference()
+// type private CustomDrawOp2(bounds:Rect, noSkia:GlyphRun, skchart:SKChart2) =
+//     let noSkia = noSkia.TryCreateImmutableGlyphRunReference()
+
+//     interface ICustomDrawOperation with
+//         member this.Bounds with get() = bounds
+
+//         member this.HitTest(p:Point) = false
+
+//         member this.Equals(other:ICustomDrawOperation) = false
+
+//         member this.Render(context:ImmediateDrawingContext) =
+//             let lease_feauture = context.TryGetFeature<ISkiaSharpApiLeaseFeature>()
+//             if lease_feauture = null then
+//                 context.DrawGlyphRun(Brushes.Black, noSkia)
+//             else
+//                 use lease = lease_feauture.Lease()
+//                 let canvas = lease.SkCanvas
+//                 canvas.Save() |> ignore
+//                 skchart.Draw(canvas)                
+//                 canvas.Restore()
+
+//         member this.Dispose() = ()       
+
+
+// type private CustomDrawOp3(bounds:Rect, noSkia:GlyphRun, skchart:SKChart3) =
+//     let noSkia = noSkia.TryCreateImmutableGlyphRunReference()
+
+//     interface ICustomDrawOperation with
+//         member this.Bounds with get() = bounds
+
+//         member this.HitTest(p:Point) = false
+
+//         member this.Equals(other:ICustomDrawOperation) = false
+
+//         member this.Render(context:ImmediateDrawingContext) =
+//             let lease_feauture = context.TryGetFeature<ISkiaSharpApiLeaseFeature>()
+//             if lease_feauture = null then
+//                 context.DrawGlyphRun(Brushes.Black, noSkia)
+//             else
+//                 use lease = lease_feauture.Lease()
+//                 let canvas = lease.SkCanvas
+//                 canvas.Save() |> ignore
+//                 skchart.Draw(canvas)                
+//                 canvas.Restore()
+
+//         member this.Dispose() = ()
+
+
+type private CustomDrawOp(bounds:Rect, noSkia:string, skchart:SKChart) =
+    // let noSkia = noSkia.TryCreateImmutableGlyphRunReference()
 
     interface ICustomDrawOperation with
         member this.Bounds with get() = bounds
@@ -34,78 +82,8 @@ type private CustomDrawOp2(bounds:Rect, noSkia:GlyphRun, skchart:SKChart2) =
         member this.Render(context:ImmediateDrawingContext) =
             let lease_feauture = context.TryGetFeature<ISkiaSharpApiLeaseFeature>()
             if lease_feauture = null then
-                context.DrawGlyphRun(Brushes.Black, noSkia)
-            else
-                use lease = lease_feauture.Lease()
-                let canvas = lease.SkCanvas
-                canvas.Save() |> ignore
-                skchart.Draw(canvas)                
-                canvas.Restore()
-
-        member this.Dispose() = ()       
-
-
-
-type SKChart2Control(skchart:SKChart2) =
-    inherit Control()
-
-    let text = "Current renderering API is not Skia"
-    let glyphs = text.Select(fun ch -> Typeface.Default.GlyphTypeface.GetGlyph(uint32 ch)).ToArray() 
-    let _noSkia = new GlyphRun(Typeface.Default.GlyphTypeface, 12, text.AsMemory(), glyphs)
-    
-    let mutable is_disposed = false
-
-    interface IDisposable with
-        member this.Dispose() = 
-            if not is_disposed then
-                (skchart :> IDisposable).Dispose()
-            is_disposed <- true
-
-    override this.Render(context:DrawingContext) =
-        context.Custom(new CustomDrawOp2(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart));
-        Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
-
-
-
-
-type private CustomDrawOp3(bounds:Rect, noSkia:GlyphRun, skchart:SKChart3) =
-    let noSkia = noSkia.TryCreateImmutableGlyphRunReference()
-
-    interface ICustomDrawOperation with
-        member this.Bounds with get() = bounds
-
-        member this.HitTest(p:Point) = false
-
-        member this.Equals(other:ICustomDrawOperation) = false
-
-        member this.Render(context:ImmediateDrawingContext) =
-            let lease_feauture = context.TryGetFeature<ISkiaSharpApiLeaseFeature>()
-            if lease_feauture = null then
-                context.DrawGlyphRun(Brushes.Black, noSkia)
-            else
-                use lease = lease_feauture.Lease()
-                let canvas = lease.SkCanvas
-                canvas.Save() |> ignore
-                skchart.Draw(canvas)                
-                canvas.Restore()
-
-        member this.Dispose() = ()
-
-
-type private CustomDrawOp(bounds:Rect, noSkia:GlyphRun, skchart:ISKChart) =
-    let noSkia = noSkia.TryCreateImmutableGlyphRunReference()
-
-    interface ICustomDrawOperation with
-        member this.Bounds with get() = bounds
-
-        member this.HitTest(p:Point) = false
-
-        member this.Equals(other:ICustomDrawOperation) = false
-
-        member this.Render(context:ImmediateDrawingContext) =
-            let lease_feauture = context.TryGetFeature<ISkiaSharpApiLeaseFeature>()
-            if lease_feauture = null then
-                context.DrawGlyphRun(Brushes.Black, noSkia)
+                // context.DrawGlyphRun(Brushes.Black, noSkia)
+                failwith noSkia
             else
                 use lease = lease_feauture.Lease()
                 let canvas = lease.SkCanvas
@@ -115,91 +93,109 @@ type private CustomDrawOp(bounds:Rect, noSkia:GlyphRun, skchart:ISKChart) =
 
         member this.Dispose() = ()       
         
+// type SKChart2Control(skchart:SKChart2) =
+//     inherit Control()
 
-type SKChart3Control(skchart:SKChart3) =
-    inherit Control()
-
-    let text = "Current renderering API is not Skia"
-    let glyphs = text.Select(fun ch -> Typeface.Default.GlyphTypeface.GetGlyph(uint32 ch)).ToArray() 
-    let _noSkia = new GlyphRun(Typeface.Default.GlyphTypeface, 12, text.AsMemory(), glyphs)
+//     let text = "Current renderering API is not Skia"
+//     let glyphs = text.Select(fun ch -> Typeface.Default.GlyphTypeface.GetGlyph(uint32 ch)).ToArray() 
+//     let _noSkia = new GlyphRun(Typeface.Default.GlyphTypeface, 12, text.AsMemory(), glyphs)
     
-    let mutable is_disposed = false
+//     let mutable is_disposed = false
 
-    interface IDisposable with
-        member this.Dispose() = 
-            if not is_disposed then
-                (skchart :> IDisposable).Dispose()
-            is_disposed <- true
+//     interface IDisposable with
+//         member this.Dispose() = 
+//             if not is_disposed then
+//                 (skchart :> IDisposable).Dispose()
+//             is_disposed <- true
 
-    override this.Render(context:DrawingContext) =
-        context.Custom(new CustomDrawOp3(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart));
-        Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
+//     override this.Render(context:DrawingContext) =
+//         context.Custom(new CustomDrawOp2(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart));
+//         Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
+
+
+// type SKChart3Control(skchart:SKChart3) =
+//     inherit Control()
+
+//     let text = "Current renderering API is not Skia"
+//     let glyphs = text.Select(fun ch -> Typeface.Default.GlyphTypeface.GetGlyph(uint32 ch)).ToArray() 
+//     let _noSkia = new GlyphRun(Typeface.Default.GlyphTypeface, 12, text.AsMemory(), glyphs)
+    
+//     let mutable is_disposed = false
+
+//     interface IDisposable with
+//         member this.Dispose() = 
+//             if not is_disposed then
+//                 (skchart :> IDisposable).Dispose()
+//             is_disposed <- true
+
+//     override this.Render(context:DrawingContext) =
+//         context.Custom(new CustomDrawOp3(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart));
+//         Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
 
 
 
 /// encapsulates SKChart2 & SKChart3 as strategy pattern
-type SKChartControl() =
+type SKChartControl(skchart:SKChart) =
     inherit Control()
 
-    let c2 = new SKChart2([])
-    let c3 = new SKChart3([], Colormap.Hot)
-    let tags = new System.Collections.Generic.List<string * int>()
-    let args = new System.Collections.ArrayList()
-    // let mutable c: ISKChart = c2
-    let mutable is_c2 = true
-    let mutable is_c3 = false
-    let mutable is_disposed = false
+    let mutable skchart = skchart
+    let mutable count = 0
+    // let mutable skchart: SKChart = new SKChart(new SKChart2([]), new SKChart3([],Colormap.Hot))
 
     let text = "Current renderering API is not Skia"
-    let glyphs = text.Select(fun ch -> Typeface.Default.GlyphTypeface.GetGlyph(uint32 ch)).ToArray() 
-    let _noSkia = new GlyphRun(Typeface.Default.GlyphTypeface, 12, text.AsMemory(), glyphs)
+    // let glyphs = text.Select(fun ch -> Typeface.Default.GlyphTypeface.GetGlyph(uint32 ch)).ToArray() 
+    // let _noSkia = new GlyphRun(Typeface.Default.GlyphTypeface, 12, text.AsMemory(), glyphs)
+    let _noSkia = text
 
+    // do
+    //     let c2 = skchart.AsSKChart2()
+    //     c2.Background <- SKColors.Orange
+    //     let c3 = skchart.AsSKChart3()
+    //     c3.Background <- SKColors.Gold
 
-    interface IDisposable with
-        member this.Dispose() =
-            if not is_disposed then
-                (c2 :> IDisposable).Dispose()
-                (c3 :> IDisposable).Dispose()
-            is_disposed <- true
+    // interface IDisposable with
+    //     member this.Dispose() =
+    //         if skchart <> null then (skchart :> IDisposable).Dispose()
+
+    new() = new SKChartControl(new SKChart(new SKChart2([]), new SKChart3([], Colormap.Hot)))
+
             
 
     override this.Render(context:DrawingContext) =
-        // context.Custom(new CustomDrawOp(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, c));
-        // Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
-        if is_c2 then
-            context.Custom(new CustomDrawOp2(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, c2));
-            Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
-        if is_c3 then
-            context.Custom(new CustomDrawOp3(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, c3));
-            Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
-
-
-    member this.Tags with get() = tags
-
-    member this.Args with get() = args
-
-    member this.AsSKChart2() = 
-        // c <- c2
-        is_c2 <- true
-        is_c3 <- false
-        c2
-
-    member this.AsSKChart3() =
-        // c <- c3
-        is_c3 <- true
-        is_c2 <- false
-        c3
-
-    member this.IsSKChart2 
-        with get() = is_c2
-        and set(value) = 
-            is_c2 <- value
-            is_c3 <- not value
-            // if value then c <- c2 else c <- c3
+        if skchart <> null then
+            count <- count + 1
+            let w = skchart.W
+            let h = skchart.H
+            let width = this.Width
+            let height = this.Height         
             
-    member this.IsSKChart3 
-        with get() = is_c3
+            
+            // if skchart.IsSKChart2 then
+                // let c2 = skchart.AsSKChart2()
+                // printfn "with models_count: %d bounds: %A" (c2.Models.Count) (c2.Bounds)
+                // printfn "skchart2 before draw context"
+                // context.Custom(new CustomDrawOp2(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart.AsSKChart2()));
+                // printfn "skchart2 before invalidate"
+                // Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
+            // elif skchart.IsSKChart3 then
+                // let c3 = skchart.AsSKChart3()
+                // printfn "with models_count: %d bounds: %A" (c3.Models.Count) (c3.Bounds)
+                // printfn "skchart3 before draw context"
+                // context.Custom(new CustomDrawOp3(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart.AsSKChart3()));
+                // printfn "skchart3 before invalidate"
+                // Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
+            
+            context.Custom(new CustomDrawOp(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart));
+            // printfn "skchart drawing count: %d, width: %g, height: %g, w: %g, h: %g" count width height w h 
+        else
+            printfn "skchart is null"
+
+        // You invalidate visual after each Render call. Basically, creating a control that requests a new render on each frame
+        // Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
+
+
+    member this.SKChart 
+        with get() = skchart
         and set(value) = 
-            is_c3 <- value
-            is_c2 <- not value
-            // if value then c <- c3 else c <- c2
+            skchart <- value
+            printfn "no_of models: %d" (if skchart.IsSKChart2 then skchart.C2.Models.Count else skchart.C3.Models.Count)
