@@ -13,6 +13,9 @@ fonts/
 *.dll
 *.dy
 
+# Zig.output
+zig-out/
+.zig-cache/
 
 # FSharp.Formatting
 .fsdocs/

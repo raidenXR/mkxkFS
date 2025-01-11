@@ -1,3 +1,5 @@
+#nowarn "9"
+
 namespace Notation
 
 open System
@@ -295,8 +297,12 @@ module Typesetting =
         | Scaled _ ->
             failwith "not implemented yet"
         | _ -> failwith $"{string expr} is not implemented yet"
-                           
-        
+
+
+    /// parses a tex-string into a sequence of Expr tokens
+    let parseTeX (tex:string) = Parser.parseExprs tex                   
+
+    /// renders image with some margin
     let render (transparent:bool) (stream:System.IO.Stream) (exprs:seq<Expr>) =
         let total_size = Measure.totalSize exprs
         let total_hbox = Measure.totalHbox exprs
@@ -344,3 +350,33 @@ module Typesetting =
         use image = surface.Snapshot()
         use data = image.Encode(SKEncodedImageFormat.Png, 80)
         data.SaveTo(stream)
+
+
+
+
+module NativeLib =
+
+    open System.Runtime
+    open System.Runtime.InteropServices
+    open Typesetting
+    open Microsoft.FSharp.NativeInterop
+
+    let ms = new System.IO.MemoryStream(16 * 1024)
+
+
+    [<UnmanagedCallersOnly(EntryPoint = "typeset")>]
+    let typeset (buffer:nativeptr<byte>, len:outref<int64>, tex:nativeptr<byte>, transparent:bool) =
+        let tex_str = Marshal.PtrToStringUTF8(NativePtr.toNativeInt(tex))
+        ms.Position <- 0
+        tex_str
+        |> parseTeX 
+        |> render transparent ms  
+        len <- ms.Position
+
+        use source = fixed ms.ToArray()
+        let dest_ptr = NativePtr.toVoidPtr buffer
+        let sour_ptr = NativePtr.toVoidPtr source
+        Buffer.MemoryCopy(sour_ptr, dest_ptr, len, len)
+                
+        ms.Position <- 0        
+        

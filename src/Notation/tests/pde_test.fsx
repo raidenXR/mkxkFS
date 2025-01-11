@@ -7,9 +7,9 @@ open System.Diagnostics
 open Notation
 
 let functions = [
-    // @"f(x) = \frac{A}{B}"
-    // @"f(x) = \pde{A}{B}"
-    // @"f(x) = \ode{A}{B}"
+    @"f(x) = \frac{A}{B}"
+    @"f(x) = \pde{A}{B}"
+    @"f(x) = \ode{A}{B}"
     @"f(x) = \hat a + \hat{A} - \tilde z / \tilde Z + B"
     @"f(x) = \widehat \frac{A}{B} - \widehat \ode{T}{t} + \nabla T - \pde{A}{t}"
     @"f(x) = A + \ddot b \cdot \ddot{B} - 4 * 3.2"
@@ -21,13 +21,8 @@ Directory.CreateDirectory dir_name |> ignore
 
 let mutable i = 1
 
-for fn in (List.map NotationFS.Parser.parseExprs functions) do    
-    printfn "parsing done: "
-    let hbox = Typesetting.Measure.totalSize fn
-    printfn "hbox: %A" hbox 
-    use fs = File.Create($"notation_images2/fn{i}.png")
-    Typesetting.render false fs fn
-    printfn "typesetting done"
-    i <- i + 1
-    fs.Flush()
-    fs.Close()
+for (i,tex) in (List.indexed functions) do    
+    use fs = File.Create($"notation_images2/fn{i + 1}.png")
+    tex
+    |> Typesetting.parseTeX 
+    |> Typesetting.render false fs

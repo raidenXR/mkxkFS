@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <OutputType>library</OutputType>
+    <PublishAot>true</PublishAot>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 

@@ -1,9 +1,9 @@
 #r "../bin/Debug/net8.0/Notation.dll"
-#r "nuget: Avalonia, 11.0.6"
-#r "nuget: Avalonia.Desktop, 11.0.6"
-#r "nuget: Avalonia.Themes.Fluent, 11.0.6"
-#r "nuget: Avalonia.FuncUI, 1.1.0"
-#r "nuget: Avalonia.Fonts.Inter, 11.0.6"
+#r "nuget: Avalonia, 11.2.3"
+#r "nuget: Avalonia.Desktop, 11.2.3"
+#r "nuget: Avalonia.Themes.Fluent, 11.2.3"
+#r "nuget: Avalonia.FuncUI, 1.5.1"
+#r "nuget: Avalonia.Fonts.Inter, 11.2.3"
 
 open Avalonia
 open Avalonia.Controls.Primitives

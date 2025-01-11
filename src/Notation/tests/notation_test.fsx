@@ -34,19 +34,12 @@ html
 |> Html.close "functions.html"
 
 
-let mutable i = 1
 let [<Literal>] dir_name = "notation_images"
 Directory.CreateDirectory dir_name |> ignore
 
-for fn in (List.map NotationFS.Parser.parseExprs functions) do    
-    let hbox = Typesetting.Measure.totalSize fn 
-    use fs = File.Create($"notation_images/fn{i}.png")
-    Typesetting.render false fs fn
-    i <- i + 1
-    fs.Flush()
-    fs.Close()
-    
+for (i,tex) in (List.indexed functions) do    
+    use fs = File.Create($"notation_images/fn{i + 1}.png")
+    tex
+    |> Typesetting.parseTeX
+    |> Typesetting.render false fs
 
-// let ms = new MemoryStream(8 * 1024)
-// let dt0 = Stopwatch.GetTimestamp()
-// let mutable i = 0
