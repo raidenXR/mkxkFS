@@ -1,8 +1,7 @@
 ### Description
 
-this project parses simple TeX string and produces *.png* images of   
-the mathematical formulas. On top of that, it **can** compile via AoT as   
-native lib, and be utilized from other languages, besides .*NET*.   
+this project parses simple TeX string and produces *.png* images of the mathematical formulas.   
+On top of that, it **can** compile via AoT as native lib, and be utilized from other languages, besides .*NET*.   
 
 #### Build
 
@@ -22,6 +21,26 @@ dotnet fsi viewnotation_test.fsx
 A demo app (tests/viewnotation_test.fsx) can be run, after following the   
 build instructions, to have a general idea about the resulting *.png* images   
 of the lib and its limitations.   
+
+#### Simple example
+
+example how to use it, and create a .png image.  
+
+```fs
+open System
+open System.IO
+open Notation
+
+let tex = @"f(x) = \frac{(C_{\beta}) - C_B}{(f(x)) / (\frac{C_A}{(N)}) \cdot (266.955 - +(C_a) * \exp(R / \sqrt{(\ln{C_{AB}} * \frac{\frac{((N_A))}{C_a}}{k_A}) + A_1}))}"
+
+let fs = File.Create("sample.png")
+
+tex
+|> Typesetting.parseTeX
+|> Typesetting.render false fs
+fs.Flush()
+fs.Close()
+```
 
 #### Build for UnmanagedCallers
 
@@ -59,23 +78,3 @@ ls -l
 A *tex_image.png* was produced from the libNotation.so, invoked from Zig!!   
    
    
-
-#### Simple example
-
-example how to use it, and create a .png image.  
-
-```fs
-open System
-open System.IO
-open Notation
-
-let tex = @"f(x) = \frac{(C_{\beta}) - C_B}{(f(x)) / (\frac{C_A}{(N)}) \cdot (266.955 - +(C_a) * \exp(R / \sqrt{(\ln{C_{AB}} * \frac{\frac{((N_A))}{C_a}}{k_A}) + A_1}))}"
-
-let fs = File.Create("sample.png")
-
-tex
-|> Typesetting.parseTeX
-|> Typesetting.render false fs
-fs.Flush()
-fs.Close()
-```
