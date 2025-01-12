@@ -34,6 +34,29 @@ module Model2 =
 
     module Bounds = 
         let Default = {xmin = 0.; xmax = 1.; ymin = 0.; ymax = 1.}
+
+        let ofModel (m:Model) =
+            let mutable xmin = m.xvalues[0]
+            let mutable xmax = m.xvalues[0]
+            let mutable ymin = m.yvalues[0]
+            let mutable ymax = m.yvalues[0]
+            
+            for xn in m.xvalues do
+                xmin <- if xmin > xn then xn else xmin
+                xmax <- if xmax < xn then xn else xmax
+            for yn in m.yvalues do
+                ymin <- if ymin > yn then yn else ymin
+                ymax <- if ymax < yn then yn else ymax
+
+            // edge cases
+            if xmin = xmax then 
+                xmin <- xmin - 0.1
+                xmax <- xmax + 0.1
+            if ymin = ymax then
+                ymin <- ymin - 0.1
+                ymax <- ymax + 0.1            
+            {xmin = xmin; xmax = xmax; ymin = ymin; ymax = ymax}
+            
     
         let ofArray (x:array<float>) (y:array<float>) =
             let mutable xmin = x[0]
@@ -197,7 +220,38 @@ module Model3 =
     module Bounds = 
         let Default = {xmin = 0.; xmax = 1.; ymin = 0.; ymax = 1.; zmin = 0.; zmax = 1.}
 
-        let ofArray (x:array<float>) (y:array<float>) (z:array<float>)=
+        let ofModel (m:Model) =
+            let mutable xmin = m.xvalues[0]
+            let mutable xmax = m.xvalues[0]
+            let mutable ymin = m.yvalues[0]
+            let mutable ymax = m.yvalues[0]
+            let mutable zmin = m.zvalues[0]
+            let mutable zmax = m.zvalues[0]
+        
+            for xn in m.xvalues do
+                xmin <- if xmin > xn then xn else xmin
+                xmax <- if xmax < xn then xn else xmax
+            for yn in m.yvalues do
+                ymin <- if ymin > yn then yn else ymin
+                ymax <- if ymax < yn then yn else ymax
+            for zn in m.zvalues do
+                zmin <- if zmin > zn then zn else zmin
+                zmax <- if zmax < zn then zn else zmax 
+
+            // edge cases
+            if xmin = xmax then 
+                xmin <- xmin - 0.1
+                xmax <- xmax + 0.1
+            if ymin = ymax then
+                ymin <- ymin - 0.1
+                ymax <- ymax + 0.1            
+            if zmin = zmax then
+                zmin <- zmin - 0.1
+                zmax <- zmax + 0.1
+            {xmin = xmin; xmax = xmax; ymin = ymin; ymax = ymax; zmin = zmin; zmax = zmax}
+
+
+        let ofArray (x:array<float>) (y:array<float>) (z:array<float>) =
             let mutable xmin = x[0]
             let mutable xmax = x[0]
             let mutable ymin = y[0]
@@ -322,7 +376,7 @@ module Model3 =
             let zn = (z[i] - b.zmin) / (b.zmax - b.zmin)
             v[i] <- Vector3(float32 xn, float32 yn, float32 zn)
     
-type SKModel =
-    | Model2 of Model2.Model
-    | Model3 of Model3.Model
+// type SKModel =
+//     | Model2 of Model2.Model
+//     | Model3 of Model3.Model
 

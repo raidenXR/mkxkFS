@@ -132,6 +132,8 @@ type private CustomDrawOp(bounds:Rect, noSkia:string, skchart:SKChart) =
 //         context.Custom(new CustomDrawOp3(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart));
 //         Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
 
+// module SKChartControl =
+//     let skchart = new SKChart(new SKChart2([]), new SKChart3([], Colormap.Hot))
 
 
 /// encapsulates SKChart2 & SKChart3 as strategy pattern
@@ -140,50 +142,20 @@ type SKChartControl(skchart:SKChart) =
 
     let mutable skchart = skchart
     let mutable count = 0
-    // let mutable skchart: SKChart = new SKChart(new SKChart2([]), new SKChart3([],Colormap.Hot))
-
     let text = "Current renderering API is not Skia"
     // let glyphs = text.Select(fun ch -> Typeface.Default.GlyphTypeface.GetGlyph(uint32 ch)).ToArray() 
     // let _noSkia = new GlyphRun(Typeface.Default.GlyphTypeface, 12, text.AsMemory(), glyphs)
     let _noSkia = text
 
-    // do
-    //     let c2 = skchart.AsSKChart2()
-    //     c2.Background <- SKColors.Orange
-    //     let c3 = skchart.AsSKChart3()
-    //     c3.Background <- SKColors.Gold
+    interface IDisposable with
+        member this.Dispose() =
+            if skchart <> null then (skchart :> IDisposable).Dispose()
 
-    // interface IDisposable with
-    //     member this.Dispose() =
-    //         if skchart <> null then (skchart :> IDisposable).Dispose()
-
-    new() = new SKChartControl(new SKChart(new SKChart2([]), new SKChart3([], Colormap.Hot)))
-
+    new() = new SKChartControl(new SKChart(SKChart2.Empty, SKChart3.Empty))
             
 
     override this.Render(context:DrawingContext) =
-        if skchart <> null then
-            count <- count + 1
-            let w = skchart.W
-            let h = skchart.H
-            let width = this.Width
-            let height = this.Height         
-            
-            
-            // if skchart.IsSKChart2 then
-                // let c2 = skchart.AsSKChart2()
-                // printfn "with models_count: %d bounds: %A" (c2.Models.Count) (c2.Bounds)
-                // printfn "skchart2 before draw context"
-                // context.Custom(new CustomDrawOp2(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart.AsSKChart2()));
-                // printfn "skchart2 before invalidate"
-                // Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
-            // elif skchart.IsSKChart3 then
-                // let c3 = skchart.AsSKChart3()
-                // printfn "with models_count: %d bounds: %A" (c3.Models.Count) (c3.Bounds)
-                // printfn "skchart3 before draw context"
-                // context.Custom(new CustomDrawOp3(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart.AsSKChart3()));
-                // printfn "skchart3 before invalidate"
-            
+        if skchart <> null then            
             context.Custom(new CustomDrawOp(Rect(0,0, this.Bounds.Width, this.Bounds.Height), _noSkia, skchart));
             Dispatcher.UIThread.InvokeAsync(this.InvalidateVisual, DispatcherPriority.Background) |> ignore
             // printfn "skchart drawing count: %d, width: %g, height: %g, w: %g, h: %g" count width height w h 
@@ -199,3 +171,5 @@ type SKChartControl(skchart:SKChart) =
         and set(value) = 
             skchart <- value
             printfn "no_of models: %d" (if skchart.IsSKChart2 then skchart.C2.Models.Count else skchart.C3.Models.Count)
+
+
