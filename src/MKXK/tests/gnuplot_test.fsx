@@ -4,19 +4,38 @@ open MKXK
 open Plotting
 open System.IO
 
-// if not (Directory.Exists("tests_outputs")) 
-//     then Directory.CreateDirectory("tests_outputs") |> ignore
     
 if not (Directory.Exists(Path.Combine("tests_output", "images"))) 
     then Directory.CreateDirectory(Path.Combine("tests_output", "images")) |> ignore
 
 let r = System.Random()
-// let rblk = [for i in 0..100 -> ]
 
-let gnu0 = Gnuplot(false, false, Some "tests_output/images/image0.png")
+
+// keeps Gnuplot window open
+let gnuA = Gnuplot()
+gnuA
+|>> "plot sin(x**2) + cos(2*x) lw 2.3"
+|> Gnuplot.run
+
+// sets output, so it does not keep window open
+let gnuB = Gnuplot()
+gnuB
+|>> "set terminal png size 640,480"
+|>> "set output 'tests_output/images/imagegnuB.png'"
+|>> "plot 2*x**3 + 3*x**2 + 3*x - 7 lw 2.3"
+|> Gnuplot.run
+
+// sets path, so it does not keep window open
+let gnuC = Gnuplot("tests_output/images/imagegnuC.png")
+gnuC
+|>> "set terminal pngcairo  transparent enhanced font 'arial,10' fontscale 1.0 size 600, 400" 
+|>> "plot 2*x**3 + 3*x**2 + 3*x - 7"
+|> Gnuplot.run
+
+let gnu0 = Gnuplot()
 gnu0 
 |>> "set terminal png size 640,480"
-// |>> "set output 'tests_output/images/image0.png'"
+|>> "set output 'tests_output/images/image0.png'"
 |> Gnuplot.datablockXY [|2.;4.;8.;9.|] [|0.;12.;34.;67.|] "points"
 |>> "plot $points with linespoints"
 |> Gnuplot.run
@@ -25,7 +44,7 @@ gnu0
 // pause the thread to view the preocess before closing
 // System.Threading.Thread.Sleep(10_000)
 
-let gnu1 = Gnuplot(false, false, Some "tests_output/images/image1.png")
+let gnu1 = Gnuplot("tests_output/images/image1.png")
 gnu1
 |>> "set terminal pngcairo  transparent enhanced font 'arial,10' fontscale 1.0 size 600, 400" 
 |>> "set dummy u, v"
@@ -70,7 +89,7 @@ gnu1
 |> Gnuplot.run
 
 
-let gnu2 = Gnuplot(false, false, Some "tests_output/images/image2.png")
+let gnu2 = Gnuplot("tests_output/images/image2.png")
 gnu2
 |>> "set terminal pngcairo  transparent enhanced font 'arial,10' fontscale 1.0 size 600, 400" 
 |>> "set label 1 'plot for [n=2:10] sin(x*n)/n' at graph 0.95, 0.92, 0 right norotate back nopoint"
@@ -89,7 +108,7 @@ gnu2
 |>> "plot for [n=2:10] sin(x*n)/n notitle lw (13-n)/2"
 |> Gnuplot.run
 
-let gnu3 = Gnuplot(false, false, Some "tests_output/images/image3.png")
+let gnu3 = Gnuplot("tests_output/images/image3.png")
 gnu3
 |>> "set terminal pngcairo  transparent enhanced font 'arial,10' fontscale 1.0 size 600, 400" 
 |>> "set border 4095 front lt black linewidth 1.000 dashtype solid"
@@ -115,7 +134,7 @@ gnu3
 |> Gnuplot.run    
 
 
-let gnu4 = Gnuplot(false, false, Some "tests_output/images/image4.png")
+let gnu4 = Gnuplot("tests_output/images/image4.png")
 gnu4
 |>> "set terminal pngcairo  transparent enhanced font 'arial,10' fontscale 1.0 size 600, 400 "
 |>> "set key at screen 1, 0.9 right top vertical Right noreverse enhanced autotitle nobox"
@@ -144,3 +163,7 @@ gnu4
 |>> "NO_ANIMATION = 1"
 |>> "splot x**2-y**2 with lines, x**2-y**2 with labels boxed notitle"
 |> Gnuplot.run
+
+
+printfn "script fishined exec"
+System.Console.ReadKey()

@@ -32,12 +32,10 @@ type Matrix<'T when 'T: equality>(entries:seq<'T>, I:int, J:int) =
         res
 
 
-type Matrix2(entries:seq<float>, I:int, J:int) =
+type Matrix2(I:int, J:int, entries:seq<float>) =
     let entries = 
         if Seq.length entries <> I * J then failwith "entries must have I * J length"
         else Array.ofSeq entries
-
-    // new(I:int, J:int) = Matrix2((Array.zeroCreate<float> (I * J)), I, J)
 
     member x.I = I
 
@@ -46,12 +44,12 @@ type Matrix2(entries:seq<float>, I:int, J:int) =
     member x.N = I * J
 
     member x.Item
-        with get(i:int, j:int) = entries[i * J + j]
-        and set(i:int, j:int) value = entries[i * J + j] <- value
+        with inline get(i:int, j:int) = entries[i * J + j]
+        and inline set(i:int, j:int) value = entries[i * J + j] <- value
 
     member x.Item
-        with get(idx:int) = entries[idx]
-        and set(idx:int) value = entries[idx] <- value
+        with inline get(idx:int) = entries[idx]
+        and inline set(idx:int) value = entries[idx] <- value
 
 
 type Matrix2 with

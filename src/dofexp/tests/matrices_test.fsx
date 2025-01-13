@@ -4,6 +4,13 @@
 
 open Dofexp
 
+let AssertBool b =
+    if b then printfn "assert passed"
+    else 
+        System.Console.ForegroundColor <- System.ConsoleColor.Red
+        printfn "assert failed"
+        System.Console.ResetColor()
+
 let Assert v0 v1 =
     if abs (v0 - v1) < 1e-5 then 
         printfn "assert passed" 
@@ -12,25 +19,28 @@ let Assert v0 v1 =
         printfn "assert failed, %g  - %g" v0 v1
         System.Console.ResetColor()
 
-let values0 = [
+let m0 = Matrix2(4, 3, [
     1.; 2.; 3.;
     1.; 2.; 3.;    
     1.; 2.; 3.;
     1.; 2.; 3.;
-]
+])
 
-let m0 = Matrix2(values0, 4, 3)
 Assert (Matrix2.sum m0)  24.0
 
-let values1 = [
+let m1 = Matrix2(5, 3, [
     23.0; 16.0; 18.0;
     21.0; 23.0; 22.0;
     24.0; 20.0; 25.0;
     17.0; 21.0; 21.0;
     19.0; 18.0; 20.0;    
-]
+])
 
-let m1 = Matrix2(values1, 5, 3)
+
+AssertBool (m1[1,2] > 20.0)
+m1[1,2] <- 12.
+AssertBool (m1[1,2] > 20.0)
+
 Assert (Matrix2.sumJ 0 m1) 104.
 Assert (Matrix2.sumJ 1 m1) 98.
 Assert (Matrix2.sumJ 2 m1) 106.
@@ -45,15 +55,14 @@ Assert (Matrix2.sum m1 * Matrix2.sum m1) 94864.
 Assert (Oneway.MSW m1) 7.4
 Assert (Oneway.MSB m1) 3.46667
 
-let values2 = [
+let m2 = Matrix2(5, 4, [
     6.0;  14.0; -5.0;  -8.0;
     5.0;  11.0; -4.0;  -11.0;
     12.0; 0.0;  -5.0;  -5.0;
     9.0;  5.0;  -11.0; -7.0;
     10.0; 6.0;  -7.0;  -9.0;
-]
+])
 
-let m2 = Matrix2(values2, 5, 4)
 Assert (Oneway.fB(m2)) 3.
 Assert (Oneway.fW(m2)) 16.
 Assert (Oneway.fT(m2)) 19.
@@ -89,7 +98,7 @@ let y_values = [
     683.2;  624.0;  682.6;  699.5;  565.4;  611.2;
     496.0;  486.2;  495.6;  513.6;  450.6;  467.2;
 ]
-let y = Matrix2(y_values, 4, 6)
+let y = Matrix2(4, 6, y_values)
 let d = DesignMatrix.createDesignMatrix(op_matrix)
 
 open Modeling

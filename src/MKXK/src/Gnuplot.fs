@@ -9,11 +9,17 @@ module Plotting =
 
     type Gnuplot(keep_log: bool, keep_process_alive: bool, path: option<string>) = 
         let sb = StringBuilder(1024)        
+        let mutable keep_process_alive = keep_process_alive
         let mutable running = false
         let mutable process': Process = null
 
         do
-            match path with | Some p -> sb.AppendLine ("set output '" + p + "'") |> ignore | None -> ()
+            match path with 
+            | Some p -> 
+                sb.AppendLine ("set output '" + p + "'") |> ignore 
+                keep_process_alive <- false
+            | None ->
+                keep_process_alive <- true
 
         
         /// close the process and dispose resources
@@ -22,6 +28,9 @@ module Plotting =
             process'.WaitForExit()
             process'.Close()
             process'.Dispose()            
+        
+        new() = Gnuplot(false, true, None)
+        new(path:string) = Gnuplot(false, false, Some path)
             
 
         member _.writeln (str: string) = 
@@ -32,6 +41,7 @@ module Plotting =
         member _.Running = running
 
         member _.run =
+            let input_str = string sb
             let pstr = if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then "gnuplot.exe"
                        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then "gnuplot"
                        elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then "gnuplot"
@@ -39,15 +49,16 @@ module Plotting =
             let info = ProcessStartInfo(FileName = pstr, UseShellExecute = false, RedirectStandardInput = true)
             process' <- new Process(StartInfo = info)
             process'.Start() |> ignore
-            process'.StandardInput.WriteLine (string sb)            
+            process'.StandardInput.WriteLine input_str       
 
+            keep_process_alive <- if input_str.Contains("set output") then false else keep_process_alive
             if not keep_process_alive then                     
                 pclose ()
 
             match keep_log, path with
                 | true, Some p -> 
                     use fs = File.CreateText (p[0..p.Length - (4 + 1)] + ".gnu")
-                    fs.WriteLine (string sb)
+                    fs.WriteLine (input_str)
                 | _, _ -> ()
 
 
