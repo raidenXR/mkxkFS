@@ -102,6 +102,21 @@ module Model2 =
             let ymax = max a.ymax b.ymax
             {xmin = xmin; ymin = ymin; xmax = xmax; ymax = ymax}
 
+        /// returns true if one of Bounds value is +infinity or -infinity
+        let isInf (b:Bounds) =
+            let xmin_inf = b.xmin = +infinity || b.xmin = -infinity 
+            let xmax_inf = b.xmax = +infinity || b.xmax = -infinity 
+            let ymin_inf = b.ymin = +infinity || b.ymin = -infinity 
+            let ymax_inf = b.ymax = +infinity || b.ymax = -infinity 
+            xmin_inf || xmax_inf || ymin_inf || ymax_inf
+
+        /// returns true if one of Bounds value is nan
+        let isNaN (b:Bounds) =
+            let xmin_nan = b.xmin = nan
+            let xmax_nan = b.xmax = nan
+            let ymin_nan = b.ymin = nan
+            let ymax_nan = b.ymax = nan
+            xmin_nan || xmax_nan || ymin_nan || ymax_nan
         
         
     let create (kind:ChartType) (x:array<float>) (y:array<float>) (color:SKColor) s :Model =
@@ -309,6 +324,25 @@ module Model3 =
             let zmax = max a.zmax b.zmax
             {xmin = xmin; ymin = ymin; xmax = xmax; ymax = ymax; zmin = zmin; zmax = zmax}
             
+        /// returns true if one of Bounds value is +infinity or -infinity
+        let isInf (b:Bounds) =
+            let xmin_inf = b.xmin = +infinity || b.xmin = -infinity 
+            let xmax_inf = b.xmax = +infinity || b.xmax = -infinity 
+            let ymin_inf = b.ymin = +infinity || b.ymin = -infinity 
+            let ymax_inf = b.ymax = +infinity || b.ymax = -infinity 
+            let zmin_inf = b.zmin = +infinity || b.zmin = -infinity 
+            let zmax_inf = b.zmax = +infinity || b.zmax = -infinity 
+            xmin_inf || xmax_inf || ymin_inf || ymax_inf || zmin_inf || zmax_inf
+
+        /// returns true if one of Bounds value is nan
+        let isNaN (b:Bounds) =
+            let xmin_nan = b.xmin = nan
+            let xmax_nan = b.xmax = nan
+            let ymin_nan = b.ymin = nan
+            let ymax_nan = b.ymax = nan
+            let zmin_nan = b.zmin = nan
+            let zmax_nan = b.zmax = nan
+            xmin_nan || xmax_nan || ymin_nan || ymax_nan || zmin_nan || zmax_nan
     
 
     let create (kind:ChartType) (x:array<float>) (y:array<float>) (z:array<float>) w h (color:SKColor) s = 

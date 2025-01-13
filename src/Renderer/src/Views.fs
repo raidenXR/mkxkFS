@@ -200,7 +200,7 @@ module Views =
                                             match model with
                                             | RawModel3 (tx,ty,tz,m) -> if tx = t && tin.Current = ty then c3.Models.Add(m)
                                             | TeXModel (tex,f,b,c,s) when tex.Contains(t) && tex.Contains(tin.Current) ->
-                                                let m = Model3.createEmpty ChartType.Points 20 20 (SKColor(uint32 c)) s
+                                                let m = Model3.createEmpty ChartType.Points 40 40 (SKColor(uint32 c)) s
                                                 evalModel3 maps t tin.Current b m
                                                 c3.Models.Add(m)
                                                 let arg = (tex,i,b)

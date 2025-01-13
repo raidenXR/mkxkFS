@@ -91,9 +91,12 @@ type SKChart2(models':list<string * Model2.Model>) =
     let get_bounds () =
         match models.Count with
         | 0 -> Model2.Bounds.Default
-        | 1 -> Model2.Bounds.ofModel models[0]
+        | 1 -> 
+            let b0 = Model2.Bounds.ofModel models[0]
+            if Model2.Bounds.isInf bounds || Model2.Bounds.isNaN bounds then b0 else Model2.Bounds.compare bounds b0
         | _ -> 
-            let mutable b = Model2.Bounds.ofModel models[0]
+            let b0 = Model2.Bounds.ofModel models[0]
+            let mutable b = if Model2.Bounds.isInf bounds || Model2.Bounds.isNaN bounds then b0 else Model2.Bounds.compare bounds b0
             for i in 1..models.Count - 1 do 
                 b <- Model2.Bounds.compare (Model2.Bounds.ofModel models[i]) b
             b
@@ -277,7 +280,7 @@ type SKChart2(models':list<string * Model2.Model>) =
     member val Background = SKColors.White with get, set
 
     member this.ResetBounds() =
-        bounds <- get_bounds ()
+        bounds <- Model2.Bounds.Default
     
     member this.UpdateModels () = 
         update_models ()        
@@ -470,9 +473,12 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
     let get_bounds () =
         match models.Count with
         | 0 -> Model3.Bounds.Default
-        | 1 -> Model3.Bounds.ofModel models[0]
+        | 1 -> 
+            let b0 = Model3.Bounds.ofModel models[0]
+            if Model3.Bounds.isInf bounds || Model3.Bounds.isNaN bounds then b0 else Model3.Bounds.compare bounds b0            
         | _ -> 
-            let mutable b = Model3.Bounds.ofModel models[0]
+            let b0 = Model3.Bounds.ofModel models[0]
+            let mutable b = if Model3.Bounds.isInf bounds || Model3.Bounds.isNaN bounds then b0 else Model3.Bounds.compare bounds b0            
             for i in 1..models.Count - 1 do 
                 b <- Model3.Bounds.compare (Model3.Bounds.ofModel models[i]) b
             b
@@ -700,7 +706,7 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
     member val Background = SKColors.White with get, set
 
     member this.ResetBounds() =
-        bounds <- get_bounds ()
+        bounds <- Model3.Bounds.Default
 
     member this.UpdateModels () = 
         update_models ()        
