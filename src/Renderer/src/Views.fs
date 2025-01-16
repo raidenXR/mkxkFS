@@ -79,8 +79,8 @@ module Views =
         static member background<'t when 't :> SKChartControl>(value:SKColor) : IAttr<'t> =
             AttrBuilder<'t>.CreateProperty<SKColor>(SKChartControl.backgroundProperty, value, ValueNone)
 
-    let private c2 = new SKChart2([])
-    let private c3 = new SKChart3([], Colormap.Hot)
+    let private c2 = new SKChart2([], W = 900f, H = 680f)
+    let private c3 = new SKChart3([], Colormap.Hot, W = 900f, H = 680f)
     let private skchart = new SKChart(c2,c3)
 
 
@@ -114,26 +114,26 @@ module Views =
                         Slider.onValueChanged (fun d ->
                             let variables = maps.variables
                             
-                            if variables.ContainsKey s then
+                            if s <> String.Empty && variables.ContainsKey s then
                                 variables[s].V <- ValueSome d
                                 let tx = target_x.Current
                                 let ty = target_y.Current
 
-                                if variables.ContainsKey(tx) && variables.ContainsKey(ty) then
+                                if tx <> String.Empty && variables.ContainsKey(tx) && ty <> String.Empty && variables.ContainsKey(ty) then
                                     let c3 = skchart.AsSKChart3()
                                     for ob in skchart.Args do
                                         let (tex,i,b) = (ob :?> string * int * Binder.BoundExpr)
                                         // if not (maps.variables.ContainsKey(tx)) then printfn "maps.variables not contain x: -%s-" tx
                                         // if not (maps.variables.ContainsKey(ty)) then printfn "maps.variables not contain y: -%s-" ty
                                         evalModel3 maps tx ty b (c3.Models[i])
-                                    c3.Update()                            
-                                elif variables.ContainsKey(tx) then
+                                    c3.UpdateCachedBounds()                            
+                                elif tx <> String.Empty && variables.ContainsKey(tx) then
                                     let c2 = skchart.AsSKChart2()
                                     for ob in skchart.Args do
                                         let (tex,i,b) = (ob :?> string * int * Binder.BoundExpr)
                                         // if not (maps.variables.ContainsKey(tx)) then printfn "maps.variables not contain x: -%s-" tx
                                         evalModel2 maps tx b (c2.Models[i])
-                                    c2.Update()
+                                    c2.UpdateCachedBounds()
 
                                 slider_value.Set d
                         )
@@ -182,10 +182,9 @@ module Views =
                                 let variables = maps.variables
 
                                 vars
-                                |> Seq.iter (fun (x, _) -> variables[x].V <- ValueSome (variables[x].A + (variables[x].B - variables[x].A) / 2.))
+                                |> Seq.iter (fun (x, _) -> if variables.ContainsKey(x) then variables[x].V <- ValueSome (variables[x].A + (variables[x].B - variables[x].A) / 2.))
 
-                                if t <> String.Empty && variables.ContainsKey(t) then 
-                                    // tout.Value <- t
+                                if variables.ContainsKey(t) then 
                                     let tex_strs = 
                                         models
                                         |> Seq.filter (function | TeXModel _ -> true | _ -> false)
@@ -193,23 +192,24 @@ module Views =
                                     
                                     if variables.ContainsKey(t) && variables.ContainsKey(tin.Current) then 
                                         let c3 = skchart.AsSKChart3()
+                                        let _t = tin.Current    // tx
                                         skchart.Args.Clear()
                                         c3.Models.Clear()
+                                        c3.ResetBounds()
                                         let mutable i = 0
                                         for model in models do
                                             match model with
                                             | RawModel3 (tx,ty,tz,m) -> if tx = t && tin.Current = ty then c3.Models.Add(m)
                                             | TeXModel (tex,f,b,c,s) when tex.Contains(t) && tex.Contains(tin.Current) ->
                                                 let m = Model3.createEmpty ChartType.Points 40 40 (SKColor(uint32 c)) s
-                                                evalModel3 maps t tin.Current b m
+                                                evalModel3 maps _t t b m
                                                 c3.Models.Add(m)
                                                 let arg = (tex,i,b)
                                                 skchart.Args.Add(arg) |> ignore
                                                 i <- i + 1
                                             | _ -> ()
-                                        c3.XImg <- Converter.image t
-                                        c3.YImg <- Converter.image tin.Current
-                                        c3.ResetBounds()
+                                        c3.XImg <- Converter.image _t
+                                        c3.YImg <- Converter.image t
                                         c3.Update()
                                         // printfn "C3-bounds: %A" c3.Bounds
                                         let tex_strs_subset = tex_strs |> Seq.filter (function tex -> tex.Contains(t) && tex.Contains(tin.Current))
@@ -227,6 +227,7 @@ module Views =
                                         let c2 = skchart.AsSKChart2() 
                                         skchart.Args.Clear()
                                         c2.Models.Clear()
+                                        c2.ResetBounds()
                                         let mutable i = 0
                                         for model in models do
                                             match model with
@@ -242,7 +243,6 @@ module Views =
                                                 i <- i + 1
                                             | _ -> ()
                                         c2.XImg <- Converter.image t
-                                        c2.ResetBounds()
                                         c2.Update()   
                                         // printfn "C2-bounds: %A" c2.Bounds                                        
                                         let tex_strs_subset = tex_strs |> Seq.filter (function tex -> tex.Contains(t))
@@ -255,8 +255,52 @@ module Views =
                                         tout.Set t
                                         vars_subset |> vars_list.Set                                     
                                         tex_strs_subset |> List.ofSeq |> tex_fns.Set
-                                    else
-                                        skchart.AsSKChart2() |> ignore                                    
+                                
+                                if t = String.Empty then
+                                    if tin.Current = String.Empty then
+                                        let c2 = skchart.AsSKChart2() 
+                                        skchart.Args.Clear()
+                                        c2.Models.Clear()
+                                        c2.ResetBounds()
+                                        c2.Update()
+                                        c2.XImg <- null
+                                        tout.Set t
+                                    elif tin.Current <> String.Empty then
+                                        let tex_strs = 
+                                            models
+                                            |> Seq.filter (function | TeXModel _ -> true | _ -> false)
+                                            |> Seq.map (function | TeXModel (tex,_,_,_,_) -> tex | _ -> failwith "...")
+                                        let _t = tin.Current
+                                        let c2 = skchart.AsSKChart2() 
+                                        skchart.Args.Clear()
+                                        c2.Models.Clear()
+                                        c2.ResetBounds()
+                                        let mutable i = 0
+                                        for model in models do
+                                            match model with
+                                            | RawModel2 (tx, ty, m) -> if tx = _t then c2.Models.Add(m)
+                                            | TeXModel (tex,f,b,c,s) when tex.Contains(_t) -> 
+                                                let (ExprTree.Assignment (n,e)) = f                                                
+                                                let m = Model2.createEmpty ChartType.Line 100 (SKColor(uint32 c)) s
+                                                evalModel2 maps _t b m
+                                                m.name <- n
+                                                c2.Models.Add(m)
+                                                let arg = (tex,i,b)
+                                                skchart.Args.Add(arg) |> ignore
+                                                i <- i + 1
+                                            | _ -> ()
+                                        c2.XImg <- Converter.image _t
+                                        c2.Update()   
+                                        let tex_strs_subset = tex_strs |> Seq.filter (function tex -> tex.Contains(t))
+                                        let vars = vars |> Array.filter (fun (s,v) -> s <> t && s <> tin.Current)
+                                        let vars_subset = [
+                                            for tex in tex_strs_subset do
+                                                for (s0,v0) in vars do
+                                                    if tex.Contains(s0) then yield (s0,v0)
+                                        ]
+                                        tout.Set t
+                                        vars_subset |> vars_list.Set                                     
+                                        tex_strs_subset |> List.ofSeq |> tex_fns.Set
 
                         )
                     ]
@@ -370,6 +414,7 @@ module Views =
     let view2 (maps:Maps, models':list<string * Model>) =
         Component(fun ctx ->
             let (names,models) = models' |> Array.ofList |> Array.unzip
+            let empty_var = (String.Empty, {A = 0.0; B = 0.1; V = ValueNone})
 
             let tex_models =
                 models 
@@ -399,6 +444,7 @@ module Views =
                 symbols_strs 
                 |> Array.filter (maps.variables.ContainsKey) 
                 |> Array.map (fun x -> x,maps.variables[x])
+                |> Array.append [|empty_var|] 
 
             let _fns =
                 symbols_strs
@@ -408,17 +454,15 @@ module Views =
             let _tex_strs_i = 
                 tex_models
                 |> Array.map (fun (tex,_,_,_,_) -> tex)
-                |> List.ofArray
+                // |> List.ofArray
                 // |> Array.indexed
 
-            // let target_x = ref String.Empty
-            // let target_y = ref String.Empty
             let target_x = ctx.useState String.Empty
             let target_y = ctx.useState String.Empty
             
             let notation = ctx.useState true
             let tex_fns  = ctx.useState _tex_strs_i
-            let vars_list = ctx.useState (List.ofArray _vars)
+            let vars_list = ctx.useState _vars
         
             DockPanel.create [
                 DockPanel.lastChildFill true
@@ -426,6 +470,8 @@ module Views =
                     StackPanel.create [
                         StackPanel.dock Dock.Left
                         StackPanel.margin (Thickness(10.0, 0.0, 0.0, 0.0))
+                        StackPanel.verticalScrollBarVisibility ScrollBarVisibility.Auto
+                        StackPanel.horizontalScrollBarVisibility ScrollBarVisibility.Auto
                         StackPanel.children [
 
                             ToggleButton.create [
@@ -433,6 +479,30 @@ module Views =
                                 ToggleButton.margin (Thickness(0., 20., 15., 20.))
                                 ToggleButton.isChecked notation.Current
                                 ToggleButton.onClick (fun _ -> notation.Set (not (notation.Current)))
+                            ]
+                            Button.create [
+                                Button.content "capture"
+                                Button.onClick (fun _ ->
+                                    if not (System.IO.Directory.Exists("vertices")) then 
+                                        System.IO.Directory.CreateDirectory("vertices") |> ignore
+                                        
+                                    let name = System.Guid.NewGuid().ToString()
+                                    let path = System.IO.Path.Combine("vertices", name)
+                                    use fs = System.IO.File.CreateText(path)
+                                    if skchart.IsSKChart2 then
+                                        let c2 = skchart.AsSKChart2()
+                                        for m in c2.Models do
+                                            fs.WriteLine "\n"
+                                            for i in 0..m.xvalues.Length - 1 do
+                                                fs.WriteLine($"{m.xvalues[i]}  {m.yvalues[i]}")
+                                    if skchart.IsSKChart3 then
+                                        let c3 = skchart.AsSKChart3()
+                                        for m in c3.Models do
+                                            fs.WriteLine "\n"
+                                            for i in 0..m.xvalues.Length - 1 do
+                                                fs.WriteLine($"{m.xvalues[i]}  {m.yvalues[i]}  {m.zvalues[i]}")
+                                            
+                                )
                             ]
                             
                             if _cons.Length > 0 then
@@ -442,7 +512,7 @@ module Views =
 
                             if _vars.Length > 0 then 
                                 TextBlock.create [TextBlock.text "Variables:"]
-                                VariablesView _vars
+                                VariablesView (Array.except [|empty_var|] _vars)
                                 Border.create [Border.height 20; Border.width 200]
                             
                             if _fns.Length > 0 then
@@ -450,9 +520,193 @@ module Views =
                                 FunctionsView _fns
                                 Border.create [Border.height 20; Border.width 200]
 
-                            ComboBoxComponent("select target-x", maps, _vars, target_x, target_y, models, vars_list, tex_fns)
-                            ComboBoxComponent("select target-y", maps, _vars, target_y, target_x, models, vars_list, tex_fns)
+                            // ComboBoxComponent("select target-x", maps, _vars, target_x, target_y, models, vars_list, tex_fns)
+                            // ComboBoxComponent("select target-y", maps, _vars, target_y, target_x, models, vars_list, tex_fns)
+                            TextBlock.create [TextBlock.text "select target-x: "]
+                            ComboBox.create [
+                                ComboBox.width 150
+                                ComboBox.dataItems _vars
+                                ComboBox.itemTemplate (
+                                    DataTemplateView<string * Variable>.create (fun (s,_) ->
+                                        Image.create [
+                                            Image.stretch Media.Stretch.None
+                                            Image.source (Converter.convertSymbol s)
+                                        ]
+                                    )
+                                )
+                                ComboBox.onSelectedItemChanged (fun args ->
+                                    if args <> null then
+                                        let (tx,v) = args :?> (string * Variable)
+                                        let ty = target_y.Current
+                                        let variables = maps.variables
 
+                                        _vars
+                                        |> Seq.iter (fun (x, _) -> if variables.ContainsKey(x) then variables[x].V <- ValueSome (variables[x].A + (variables[x].B - variables[x].A) / 2.))
+
+                                        if variables.ContainsKey(tx) && variables.ContainsKey(ty) then
+                                            let c3 = skchart.AsSKChart3()
+                                            skchart.Args.Clear()
+                                            c3.Models.Clear()
+                                            c3.ResetBounds()
+                                            let mutable i = 0
+                                            for model in models do
+                                                match model with
+                                                | RawModel3 (_tx,_ty,_,m) -> if _tx = tx && ty = _ty then c3.Models.Add(m)
+                                                | TeXModel (tex,f,b,c,s) when tex.Contains(tx) && tex.Contains(ty) ->
+                                                    let m = Model3.createEmpty ChartType.Points 40 40 (SKColor(uint32 c)) s
+                                                    evalModel3 maps tx ty b m
+                                                    c3.Models.Add(m)
+                                                    let arg = (tex,i,b)
+                                                    skchart.Args.Add(arg) |> ignore
+                                                    i <- i + 1
+                                                | _ -> ()
+                                            c3.XImg <- Converter.image tx
+                                            c3.YImg <- Converter.image ty
+                                            c3.Update()
+
+                                        if variables.ContainsKey(tx) && ty = String.Empty then
+                                            let c2 = skchart.AsSKChart2()
+                                            skchart.Args.Clear()
+                                            c2.Models.Clear()
+                                            c2.ResetBounds()
+                                            let mutable i = 0
+                                            for model in models do
+                                                match model with
+                                                | RawModel2 (_tx,_,m) -> if _tx = tx then c2.Models.Add(m)
+                                                | TeXModel (tex,f,b,c,s) when tex.Contains(tx) ->
+                                                    let (ExprTree.Assignment (n,e)) = f
+                                                    let m = Model2.createEmpty ChartType.Line 100 (SKColor(uint32 c)) s
+                                                    evalModel2 maps tx b m
+                                                    m.name <- n
+                                                    c2.Models.Add(m)
+                                                    let arg = (tex,i,b)
+                                                    skchart.Args.Add(arg) |> ignore
+                                                    i <- i + 1
+                                                | _ -> ()
+                                            c2.XImg <- Converter.image tx
+                                            c2.Update()
+
+                                        if tx = String.Empty && ty <> String.Empty then
+                                            ignore ()   // ignore this case, tx must be set first 
+
+                                        if tx = String.Empty && ty = String.Empty then
+                                            let c2 = skchart.AsSKChart2()
+                                            skchart.Args.Clear()
+                                            c2.Models.Clear()
+                                            c2.ResetBounds()
+                                            c2.Update()
+                                            c2.XImg <- null
+
+                                        target_x.Set tx
+
+                                        _tex_strs_i
+                                        |> Array.filter (function tex -> tex.Contains(tx) && tex.Contains(ty))
+                                        |> tex_fns.Set 
+
+                                        _tex_strs_i
+                                        |> Array.filter (function tex -> tex.Contains(tx) && tex.Contains(ty))
+                                        |> Array.allPairs _vars
+                                        |> Array.filter (fun ((t,v),tex) -> tex.Contains(t))
+                                        |> Array.distinct
+                                        |> Array.filter (fun ((t,v),tex) -> t <> tx && t <> ty)
+                                        |> Array.map (fun ((t,v),tex) -> (t,v))
+                                        |> vars_list.Set
+                                        
+                                )
+                            ]
+
+                            TextBlock.create [TextBlock.text "select target-y: "]
+                            ComboBox.create [
+                                ComboBox.width 150
+                                ComboBox.dataItems _vars
+                                ComboBox.itemTemplate (
+                                    DataTemplateView<string * Variable>.create (fun (s,v) ->
+                                        Image.create [
+                                            Image.stretch Media.Stretch.None
+                                            Image.source (Converter.convertSymbol s)
+                                        ]
+                                    )
+                                )
+                                ComboBox.onSelectedItemChanged (fun args -> 
+                                    if args <> null then
+                                        let (ty,v) = args :?> (string * Variable)
+                                        let tx = target_x.Current
+                                        let variables = maps.variables
+                                        
+                                        _vars
+                                        |> Seq.iter (fun (x, _) -> if variables.ContainsKey(x) then variables[x].V <- ValueSome (variables[x].A + (variables[x].B - variables[x].A) / 2.))
+
+                                        if variables.ContainsKey(tx) && variables.ContainsKey(ty) then
+                                            let c3 = skchart.AsSKChart3()
+                                            skchart.Args.Clear()
+                                            c3.Models.Clear()
+                                            c3.ResetBounds()
+                                            let mutable i = 0
+                                            for model in models do
+                                                match model with
+                                                | RawModel3 (_tx,_ty,_,m) -> if _tx = tx && ty = _ty then c3.Models.Add(m)
+                                                | TeXModel (tex,f,b,c,s) when tex.Contains(tx) && tex.Contains(ty) ->
+                                                    let m = Model3.createEmpty ChartType.Points 40 40 (SKColor(uint32 c)) s
+                                                    evalModel3 maps tx ty b m
+                                                    c3.Models.Add(m)
+                                                    let arg = (tex,i,b)
+                                                    skchart.Args.Add(arg) |> ignore
+                                                    i <- i + 1
+                                                | _ -> ()
+                                            c3.XImg <- Converter.image tx
+                                            c3.YImg <- Converter.image ty
+                                            c3.Update()
+
+                                        if variables.ContainsKey(tx) && ty = String.Empty then
+                                            let c2 = skchart.AsSKChart2()
+                                            skchart.Args.Clear()
+                                            c2.Models.Clear()
+                                            c2.ResetBounds()
+                                            let mutable i = 0
+                                            for model in models do
+                                                match model with
+                                                | RawModel2 (_tx,_,m) -> if _tx = tx then c2.Models.Add(m)
+                                                | TeXModel (tex,f,b,c,s) when tex.Contains(tx) ->
+                                                    let (ExprTree.Assignment (n,e)) = f
+                                                    let m = Model2.createEmpty ChartType.Line 100 (SKColor(uint32 c)) s
+                                                    evalModel2 maps tx b m
+                                                    m.name <- n
+                                                    c2.Models.Add(m)
+                                                    let arg = (tex,i,b)
+                                                    skchart.Args.Add(arg) |> ignore
+                                                    i <- i + 1
+                                                | _ -> ()
+                                            c2.XImg <- Converter.image tx
+                                            c2.Update()
+
+                                        if tx = String.Empty && ty <> String.Empty then
+                                            ignore ()   // ignore this case, tx must be set first 
+                                            
+                                        if tx = String.Empty && ty = String.Empty then
+                                            let c2 = skchart.AsSKChart2()
+                                            skchart.Args.Clear()
+                                            c2.Models.Clear()
+                                            c2.ResetBounds()
+                                            c2.Update()
+                                            c2.XImg <- null
+                                        
+                                        target_y.Set ty
+
+                                        _tex_strs_i
+                                        |> Array.filter (function tex -> tex.Contains(tx) && tex.Contains(ty))
+                                        |> tex_fns.Set 
+
+                                        _tex_strs_i
+                                        |> Array.filter (function tex -> tex.Contains(tx) && tex.Contains(ty))
+                                        |> Array.allPairs _vars
+                                        |> Array.filter (fun ((t,v),tex) -> tex.Contains(t))
+                                        |> Array.distinct
+                                        |> Array.filter (fun ((t,v),tex) -> t <> tx && t <> ty)
+                                        |> Array.map (fun ((t,v),tex) -> (t,v))
+                                        |> vars_list.Set
+                                )
+                            ]
+                            
                             // slider for c3 rotation - elevation
                             TextBlock.create [TextBlock.text "elevation: "]
                             Slider.create [
@@ -465,7 +719,7 @@ module Views =
                                     if skchart.IsSKChart3 then
                                         let c3 = skchart.AsSKChart3()
                                         c3.Camera.Elevation <- float32 v
-                                        c3.Update()
+                                        c3.UpdateCachedBounds()
                                 )
                             ]
                             // slider for c3 rotation - azimuth
@@ -480,7 +734,7 @@ module Views =
                                     if skchart.IsSKChart3 then
                                         let c3 = skchart.AsSKChart3()
                                         c3.Camera.Azimuth <- float32 v
-                                        c3.Update()
+                                        c3.UpdateCachedBounds()
                                 )
                             ]
                         ]
@@ -496,7 +750,7 @@ module Views =
                                 ListBox.column 1
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems [for (i,tex_fn) in (List.indexed tex_fns.Current) -> FnNotationComponent i tex_fn notation]
+                                ListBox.dataItems [for (i,tex_fn) in (Array.indexed tex_fns.Current) -> FnNotationComponent i tex_fn notation]
                             ]                            
                         ]
                     ]
@@ -512,7 +766,7 @@ module Views =
                                 ListBox.background "White"
                                 ListBox.verticalScrollBarVisibility ScrollBarVisibility.Auto
                                 ListBox.horizontalScrollBarVisibility ScrollBarVisibility.Auto
-                                ListBox.dataItems [for s in vars_list.Current -> SliderComponent s maps target_x target_y]
+                                ListBox.dataItems [for s in (Array.except [empty_var] vars_list.Current) -> SliderComponent s maps target_x target_y]
                             ]
                         ]
                     ]
@@ -520,6 +774,19 @@ module Views =
 
                     View.createGeneric<SKChartControl> []
                     |> View.withConstructorArgs [|skchart :> obj|]
+                    // SKChartControl.create [
+                    //     SKChartControl.chart skchart
+                    //     SKChartControl.onSizeChanged (fun s ->
+                    //         if skchart.IsSKChart2 then 
+                    //             let c2 = skchart.AsSKChart2()
+                    //             c2.W <- float32 s.NewSize.Width
+                    //             c2.H <- float32 s.NewSize.Height
+                    //         elif skchart.IsSKChart3 then
+                    //             let c3 = skchart.AsSKChart3()
+                    //             c3.W <- float32 s.NewSize.Width
+                    //             c3.H <- float32 s.NewSize.Height
+                    //     )
+                    // ]                    
 
                 ]
             ]

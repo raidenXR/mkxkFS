@@ -87,8 +87,20 @@ type SKChart2(models':list<string * Model2.Model>) =
             p[p.Length - 1] <- cast (Vector2.Transform(v[v.Length - 1], transform))
         | _ -> failwith "this CharType is not valid for SKChart2"
     
-    /// resets bounds of the SKChart2
+    /// get bounds of the SKChart2
     let get_bounds () =
+        match models.Count with
+        | 0 -> Model2.Bounds.Default
+        | 1 -> Model2.Bounds.ofModel models[0]
+        | _ ->
+            let mutable b = Model2.Bounds.ofModel models[0]
+            for i in 1..models.Count - 1 do 
+                b <- Model2.Bounds.compare (Model2.Bounds.ofModel models[i]) b
+            b
+
+
+    /// get bounds of the SKChart2, compared to cached value
+    let get_bounds_cached () =
         match models.Count with
         | 0 -> Model2.Bounds.Default
         | 1 -> 
@@ -104,7 +116,7 @@ type SKChart2(models':list<string * Model2.Model>) =
     /// updates bounds, applies noramization and transformation
     let update_state a =
         ignore a 
-        bounds <- get_bounds ()
+        // bounds <- get_bounds ()
         for m in models do 
             Model2.normalize bounds m
             transform_pts m transform
@@ -201,11 +213,12 @@ type SKChart2(models':list<string * Model2.Model>) =
 
     do 
         models' |> List.iter (fun (name,model) -> models.Add({model with name = name}))
+        bounds <- get_bounds ()
         update_grid ()
         update_axes ()
         update_ticks ()
-        update_models ()
         update_labels ()
+        update_models ()
 
         let t = Matrix3x2.CreateTranslation(0.6f, 0.6f) * Matrix3x2.CreateScale(0.5f, 0.5f)
         let p = Vector2.Transform(Vector2(1f, 0.8f), t)
@@ -222,11 +235,12 @@ type SKChart2(models':list<string * Model2.Model>) =
 
     interface ISKChart with
         member this.Update() =
+            bounds <- get_bounds ()
             update_grid ()
             update_axes ()
             update_ticks ()
-            update_models ()
             update_labels ()
+            update_models ()
 
             let t = Matrix3x2.CreateTranslation(0.6f, 0.6f) * Matrix3x2.CreateScale(0.5f, 0.5f)
             let p = Vector2.Transform(Vector2(1f, 0.8f), t)
@@ -287,16 +301,28 @@ type SKChart2(models':list<string * Model2.Model>) =
     
     
     member this.Update() =
+        bounds <- get_bounds ()
         update_grid ()
         update_axes ()
         update_ticks ()
-        update_models ()
         update_labels ()
+        update_models ()
 
         let t = Matrix3x2.CreateTranslation(0.6f, 0.6f) * Matrix3x2.CreateScale(0.5f, 0.5f)
         let p = Vector2.Transform(Vector2(1f, 0.8f), t)
         legend <- cast p
         
+    member this.UpdateCachedBounds() =
+        bounds <- get_bounds_cached ()
+        update_grid ()
+        update_axes ()
+        update_ticks ()
+        update_labels ()
+        update_models ()
+
+        let t = Matrix3x2.CreateTranslation(0.6f, 0.6f) * Matrix3x2.CreateScale(0.5f, 0.5f)
+        let p = Vector2.Transform(Vector2(1f, 0.8f), t)
+        legend <- cast p
 
     member this.Draw(canvas:SKCanvas) =
         canvas.DrawPoints(SKPointMode.Lines, grid_pts, paint_silver)
@@ -473,6 +499,18 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
     let get_bounds () =
         match models.Count with
         | 0 -> Model3.Bounds.Default
+        | 1 ->        
+            Model3.Bounds.ofModel models[0]
+        | _ ->
+            let mutable b = Model3.Bounds.ofModel models[0]
+            for i in 1..models.Count - 1 do 
+                b <- Model3.Bounds.compare (Model3.Bounds.ofModel models[i]) b
+            b
+
+    /// resets bounds of the SKChart3
+    let get_bounds_cached () =
+        match models.Count with
+        | 0 -> Model3.Bounds.Default
         | 1 -> 
             let b0 = Model3.Bounds.ofModel models[0]
             if Model3.Bounds.isInf bounds || Model3.Bounds.isNaN bounds then b0 else Model3.Bounds.compare bounds b0            
@@ -483,9 +521,10 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
                 b <- Model3.Bounds.compare (Model3.Bounds.ofModel models[i]) b
             b
 
+            
     let update_state a =
         ignore a
-        bounds <- get_bounds ()
+        // bounds <- get_bounds ()
         let transform = camera.View
         for m in models do
             Model3.normalize bounds m
@@ -622,11 +661,12 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
 
     do
         models' |> List.iter (fun model -> models.Add(model))
+        bounds <- get_bounds ()
         update_grid ()
         update_axis ()
         update_ticks ()
-        update_models ()
         update_labels ()
+        update_models ()
         colorbar.Bounds <- bounds
         colorbar.W <- w
         colorbar.H <- h
@@ -645,11 +685,12 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
 
     interface ISKChart with
         member this.Update() =
+            bounds <- get_bounds ()
             update_grid ()
             update_axis ()
             update_ticks ()
-            update_models ()
             update_labels ()
+            update_models ()
             colorbar.Bounds <- bounds
             colorbar.W <- w
             colorbar.H <- h
@@ -705,25 +746,40 @@ type SKChart3(models':list<Model3.Model>, colormap:Colormap) =
 
     member val Background = SKColors.White with get, set
 
+    /// reset bounds to Bounds.Default
     member this.ResetBounds() =
         bounds <- Model3.Bounds.Default
 
     member this.UpdateModels () = 
         update_models ()        
 
-
+    /// updates SKChart, while restoring bounds to current bounds
     member this.Update() =
+        bounds <- get_bounds ()
         update_grid ()
         update_axis ()
         update_ticks ()
-        update_models ()
         update_labels ()
+        update_models ()
         colorbar.Bounds <- bounds
         colorbar.W <- w
         colorbar.H <- h
         colorbar.Update()
         camera.Resync <- false
         
+    /// updates SKChart, while comparing with cached bounds
+    member this.UpdateCachedBounds() =
+        bounds <- get_bounds_cached ()
+        update_grid ()
+        update_axis ()
+        update_ticks ()
+        update_labels ()
+        update_models ()
+        colorbar.Bounds <- bounds
+        colorbar.W <- w
+        colorbar.H <- h
+        colorbar.Update()
+        camera.Resync <- false
 
     member this.Draw(canvas:SKCanvas) =
         canvas.DrawPoints(SKPointMode.Lines, grid_pts, paint_silver)

@@ -96,10 +96,10 @@ module Model2 =
 
 
         let compare (a:Bounds) (b:Bounds) =
-            let xmin = min a.xmin b.xmin
-            let xmax = max a.xmax b.xmax
-            let ymin = min a.ymin b.ymin
-            let ymax = max a.ymax b.ymax
+            let xmin = if a.xmin < b.xmin then a.xmin else b.xmin
+            let xmax = if a.xmax > b.xmax then a.xmax else b.xmax
+            let ymin = if a.ymin < b.ymin then a.ymin else b.ymin
+            let ymax = if a.ymax > b.ymax then a.ymax else b.ymax
             {xmin = xmin; ymin = ymin; xmax = xmax; ymax = ymax}
 
         /// returns true if one of Bounds value is +infinity or -infinity
@@ -316,12 +316,12 @@ module Model3 =
 
 
         let compare (a:Bounds) (b:Bounds) =
-            let xmin = min a.xmin b.xmin
-            let xmax = max a.xmax b.xmax
-            let ymin = min a.ymin b.ymin
-            let ymax = max a.ymax b.ymax
-            let zmin = min a.zmin b.zmin
-            let zmax = max a.zmax b.zmax
+            let xmin = if a.xmin < b.xmin then a.xmin else b.xmin
+            let xmax = if a.xmax > b.xmax then a.xmax else b.xmax
+            let ymin = if a.ymin < b.ymin then a.ymin else b.ymin
+            let ymax = if a.ymax > b.ymax then a.ymax else b.ymax
+            let zmin = if a.zmin < b.zmin then a.zmin else b.zmin
+            let zmax = if a.zmax > b.zmax then a.zmax else b.zmax
             {xmin = xmin; ymin = ymin; xmax = xmax; ymax = ymax; zmin = zmin; zmax = zmax}
             
         /// returns true if one of Bounds value is +infinity or -infinity

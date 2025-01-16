@@ -4,6 +4,7 @@ obj/
 original_source/
 runtimes/
 fonts/
+vertices/
 
 *.txt
 *.gnu
