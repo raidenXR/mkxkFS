@@ -34,6 +34,7 @@ type TokenId =
     | Sum
     | Prod
     | Int
+    | IntIndefinite
     | Diff
     | ODE
     | PDE
@@ -70,6 +71,7 @@ type TokenId =
         | Cos -> "\\cos"
         | Sin -> "\\sin"
         | Tan -> "\\tan"
+        | Int -> "\\int"
         | ODE -> "\\ode"
         | PDE -> "\\pde"
         | _ -> "not implemented"
@@ -81,13 +83,6 @@ type Token(pos: int, str: string, id: TokenId) =
     member _.Str = str
     member _.Id = id
 
-
-// [<Struct>]
-// type Variable(a: float, b: float, v: voption<float>) =
-//     member _.A = a
-//     member _.B = b
-//     member _.V = v
-//     new(a: float, b: float) = Variable(a, b, ValueNone)
 
 type Variable = {
     A: float
@@ -110,9 +105,10 @@ module ExprTree =
         | Unary of Expr * ref<TokenId>
         | Sum of Expr * Expr * Expr
         | Prod of Expr * Expr * Expr
-        | Int of Expr * Expr * Expr
-        | Diff of Expr * Expr
-        | ODE of Expr * Expr
+        | Int of Expr * Expr * Expr * string
+        | IntIndefinite of Expr * string
+        | Diff of Expr * string
+        | ODE of Expr * string
         | PDE of Expr * Expr
         | ExprNone
 
@@ -130,7 +126,8 @@ module ExprTree =
             | Enclosure e -> "Enclosure"
             | Sum (i, n, f) -> "\\sum"
             | Prod (i, n, f) -> "\\prod"
-            | Int (i, n, f) -> "\\int"
+            | Int (i, n, f, t) -> "\\int"
+            | IntIndefinite (f, t) -> "\\int"
             | Diff (a, b) -> "\\diff"
             | ODE (a, b) -> "\\ode"
             | PDE (a, b) -> "\\pde"
@@ -163,9 +160,10 @@ module ExprTree =
         | Unary (o, op) -> [o]
         | Sum (i, n, f) -> [i; n; f]
         | Prod (i, n, f) -> [i; n; f]
-        | Int (a, b, f) -> [a; b; f]
-        | Diff (a, b) -> [a; b]
-        | ODE (a, b) -> [a; b]
+        | Int (a, b, f, t) -> [a; b; f]
+        | IntIndefinite (f, t) -> [f]
+        | Diff (a, b) -> [a]
+        | ODE (a, b) -> [a]
         | PDE (a, b) -> [a; b]
         | ExprNone -> [] 
 
@@ -251,9 +249,10 @@ module ExprTree =
             | Enclosure e -> Enclosure (copy_node e)
             | Sum (i, n, f) -> Sum (copy_node i, copy_node n, copy_node f)
             | Prod (i, n, f) -> Prod (copy_node i, copy_node n, copy_node f)
-            | Int (a, b, f) -> Int (copy_node a, copy_node b, copy_node f)
-            | Diff (a, b) -> Diff (copy_node a, copy_node b)
-            | ODE (a, b) -> ODE (copy_node a, copy_node b)
+            | Int (a, b, f, t) -> Int (copy_node a, copy_node b, copy_node f, t)
+            | IntIndefinite (f, t) -> IntIndefinite (copy_node f, t)
+            | Diff (a, b) -> Diff (copy_node a, b)
+            | ODE (a, b) -> ODE (copy_node a, b)
             | PDE (a, b) -> PDE (copy_node a, copy_node b)
             | _ -> failwith "node not implemented yet"
         copy_node f
@@ -302,20 +301,29 @@ module ExprTree =
                 to_latex n
                 write "}"
                 to_latex f
-            | Int (a, b, f) ->
+            | Int (a, b, f, t) ->
                 write "\\int_{"
                 to_latex a
                 write "}^{"
                 to_latex b
                 write "}"
                 to_latex f
+                write "d"
+                // to_latex t
+                write t
+            | IntIndefinite (f,t) ->
+                write "\\int"
+                to_latex f
+                write "d"
+                write t
             | Diff (u, l) ->
                 failwith "Diff is a special case with a macro. TO BE implemented later" // OBSOLETE ?
             | ODE (a, b) -> 
                 write "\\ode{"
                 to_latex a
                 write "}{"
-                to_latex b
+                // to_latex b
+                write b
                 write "}"
             | PDE (a, b) -> 
                 write "\\pde{"
@@ -505,9 +513,10 @@ module Binder =
         | Unary of BoundExpr * UnaryOp
         | Sum of int * int * BoundExpr
         | Prod of int * int * BoundExpr
-        | Int of float * float * BoundExpr
-        | Diff of BoundExpr * BoundExpr
-        | ODE of BoundExpr * BoundExpr
+        | Int of float * float * BoundExpr * string
+        | IntIndefinite of BoundExpr * string
+        | Diff of BoundExpr * string
+        | ODE of BoundExpr * string
         | PDE of BoundExpr * BoundExpr
         | BoundExprNone
 
@@ -517,9 +526,10 @@ module Binder =
         | Unary (o, op) -> [o]
         | Sum (i, n, f) -> [f]
         | Prod (i, n, f) -> [f] 
-        | Int (a, b, f) -> [f]
-        | Diff (a, b) -> [a; b]
-        | ODE (a, b) -> [a; b]
+        | Int (a, b, f, t) -> [f]
+        | IntIndefinite (f, t) -> [f]
+        | Diff (a, b) -> [a]
+        | ODE (a, b) -> [a]
         | PDE (a, b) -> [a; b]
         | _ -> []
 
@@ -571,19 +581,22 @@ module Binder =
             let n' = match n with | Expr.Number n -> int n.Value | _ -> failwith "wrong epxr" 
             let f' = bind f
             Prod (i', n', f')
-        | Expr.Int (a, b, f) -> 
-            let a' = match a with | Expr.Number n -> int n.Value | _ -> failwith "wrong epxr" 
-            let b' = match b with | Expr.Number n -> int n.Value | _ -> failwith "wrong epxr" 
+        | Expr.Int (a, b, f, t) -> 
+            let a' = match a with | Expr.Number n -> int n.Value | _ -> failwith "wrong expr, must be Number" 
+            let b' = match b with | Expr.Number n -> int n.Value | _ -> failwith "wrong expr, must be Number" 
             let f' = bind f
-            Int (a', b', f')
+            Int (a', b', f', t)
+        | Expr.IntIndefinite (f, t) -> 
+            let f' = bind f
+            IntIndefinite (f', t)
         | Expr.Diff (u, l) ->
             let upper = bind u
-            let lower = bind l
-            Diff (upper, lower)            
+            // let lower = bind l
+            Diff (upper, l)            
         | Expr.ODE (a, b) ->
             let upper = bind a
-            let lower = bind b
-            ODE (upper, lower)            
+            // let lower = bind b
+            ODE (upper, b)            
         | Expr.PDE (a, b) ->
             let upper = bind a
             let lower = bind b
@@ -651,87 +664,117 @@ module Evaluation =
                 res <- res + (eval m t f)
                 i' <- i' + 1
             res
-        | Int (a, b, f) ->
-            let dx = (b - a) / 1000.
-            let mutable x = a
+        | Int (a, b, f, target) ->
+            let N = 100
+            let h = (b - a) / float (N - 1)
             let mutable res = 0.
-            m.variables["dx"].V <- ValueSome 1.0
-            m.variables["x"].V <- ValueSome x
-
-            for i in 0..1000 do
-                x <- x + dx
-                m.variables["x"].V <- ValueSome x
-                let fx = eval m t f
-                res <- dx * if i % 2 = 0 then fx * 4. / 3. else fx * 2. / 3.            
+            // if not (m.variables.ContainsKey target) then 
+            //     failwith $"-{target}- does not exist in maps.variables"
             // lhs
-            res <- res + ((eval m t f) * dx / 3.)
+            m.variables[target].V <- ValueSome a
+            res <- res + ((eval m t f) * h / 3.)
+            for i in 2..N - 2 do
+                m.variables[target].V <- ValueSome (a + (float i) * h)
+                let fx = eval m t f
+                res <- res + h * (if i % 2 = 0 then fx * 4. / 3. else fx * 2. / 3.)   
             // rhs
-            res <- res + ((eval m t f) * dx / 3.)
+            m.variables[target].V <- ValueSome b
+            res <- res + ((eval m t f) * h / 3.)
             res
-        | Diff (u, l) -> 
-            let h = 0.001
-            let v = m.variables[t]
-            let x = match v.V with | ValueSome s -> s | ValueNone -> v.A + (v.B - v.A) / 2.
-            let a = x - h / 2.
-            let b = x + h / 2.
+        | IntIndefinite (f, target) ->
+            failwith "For IntIndefinite, algorithm from CAS book, p.206 must be implemented"
+            // let v = m.variables[target]
+            // let h = 1000.
+            // let dx = (v.B - v.A) / h
+
+            // let V = match v.V with | ValueSome vs -> vs | ValueNone -> (v.B - v.A) / 2. + v.A
+
+            // m.variables[target].V <- ValueSome (V + 0.5 * dx)
+            // let e_plus = eval m target f
+
+            // m.variables[target].V <- ValueSome (V - 0.5 * dx) 
+            // let e_minus = eval m target f
+
+            // let da = e_minus * dx
+            // let db = (e_plus - e_minus) * dx * 0.5
+            // da + db
+        | Diff (f, target) -> 
+            let h = 1000.
+            let v = m.variables[target]
+            let Dt = (v.B - v.A) / h
+
+            let V = match v.V with | ValueSome vs -> vs | ValueNone -> (v.B - v.A) / 2. + v.A
             
-            m.variables[t].V <- ValueSome a
-            let fa = eval m t u
-            m.variables[t].V <- ValueSome b
-            let fb = eval m t l
-            (fb - fa) / h
-        | ODE (a, b) -> 
-            // solve ODE with RK4
-            // this solves over a series of x-values.
-            // For single value run Diff  !!!!!
-            let mutable h = 0.
-            let mutable t' = 0.
-            let mutable a = 0.
-            let mutable b = 10.
-            let y = Array.zeroCreate<float> 2
-            let ydumb = Array.zeroCreate<float> 2
-            let freturn = Array.zeroCreate<float> 2
-            let k1 = Array.zeroCreate<float> 2
-            let k2 = Array.zeroCreate<float> 2
-            let k3 = Array.zeroCreate<float> 2
-            let k4 = Array.zeroCreate<float> 2
-            let mutable i = 0
-            let mutable n = 100
+            m.variables[target].V <- ValueSome (V + 0.5 * Dt)
+            let e_plus = eval m target f
 
-            h <- (b - a) / (float n)
-            t' <- a
+            m.variables[target].V <- ValueSome (V - 0.5 * Dt) 
+            let e_minus = eval m target f
+            (e_plus - e_minus) / Dt
+        | ODE (f, target) -> 
+            let h = 1000.
+            let v = m.variables[target]
+            let Dt = (v.B - v.A) / h
 
-            // initial y-evaluation
-            y[0] <- eval m t f
-            m.variables[t].V <- ValueSome (m.variables[t].A + h)
-            y[1] <- eval m t f
+            let V = match v.V with | ValueSome vs -> vs | ValueNone -> (v.B - v.A) / 2. + v.A
+            
+            m.variables[target].V <- ValueSome (V + 0.5 * Dt)
+            let e_plus = eval m target f
 
-            // capture the evaluation step inside the f-function block
-            let fn (tx: float, y: array<float>, fret:array<float>) = 
-                m.variables[t].V <- ValueSome tx
-                fret[0] <- y[1]
-                fret[1] <- eval m t f
+            m.variables[target].V <- ValueSome (V - 0.5 * Dt) 
+            let e_minus = eval m target f
+            (e_plus - e_minus) / Dt
+            // // solve ODE with RK4
+            // // this solves over a series of x-values.
+            // // For single value run Diff  !!!!!
+            // let mutable h = 0.
+            // let mutable t' = 0.
+            // let mutable a = 0.
+            // let mutable b = 10.
+            // let y = Array.zeroCreate<float> 2
+            // let ydumb = Array.zeroCreate<float> 2
+            // let freturn = Array.zeroCreate<float> 2
+            // let k1 = Array.zeroCreate<float> 2
+            // let k2 = Array.zeroCreate<float> 2
+            // let k3 = Array.zeroCreate<float> 2
+            // let k4 = Array.zeroCreate<float> 2
+            // let mutable i = 0
+            // let mutable n = 100
+
+            // h <- (b - a) / (float n)
+            // t' <- a
+
+            // // initial y-evaluation
+            // y[0] <- eval m t f
+            // m.variables[t].V <- ValueSome (m.variables[t].A + h)
+            // y[1] <- eval m t f
+
+            // // capture the evaluation step inside the f-function block
+            // let fn (tx: float, y: array<float>, fret:array<float>) = 
+            //     m.variables[t].V <- ValueSome tx
+            //     fret[0] <- y[1]
+            //     fret[1] <- eval m t f
         
-            while t' < b do
-                if ((t' + h) > b) then h <- b - t'
-                fn (t', y, freturn)
-                k1[0] <- h * freturn[0]
-                k1[1] <- h * freturn[1]
-                for i in 0..1 do ydumb[i] <- y[i] + k1[i] / 2.
-                fn (t' + h / 2., ydumb, freturn)
-                k2[0] <- h * freturn[0]
-                k2[1] <- h * freturn[1]
-                for i in 0..1 do ydumb[i] <- y[i] + k2[i] / 2.
-                fn (t' + h / 2., ydumb, freturn)
-                k3[0] <- h * freturn[0]
-                k3[1] <- h * freturn[1]
-                for i in 0..1 do ydumb[i] <- y[i] + k3[i]
-                fn (t' + h, ydumb, freturn)
-                k4[0] <- h * freturn[0]
-                k4[1] <- h * freturn[1]
-                for i in 0..1 do y[i] <- y[i] + (k1[i] + 2. * (k2[i] + k3[i]) + k4[i]) / 6.
-                t' <- t' + h
-            y[0]
+            // while t' < b do
+            //     if ((t' + h) > b) then h <- b - t'
+            //     fn (t', y, freturn)
+            //     k1[0] <- h * freturn[0]
+            //     k1[1] <- h * freturn[1]
+            //     for i in 0..1 do ydumb[i] <- y[i] + k1[i] / 2.
+            //     fn (t' + h / 2., ydumb, freturn)
+            //     k2[0] <- h * freturn[0]
+            //     k2[1] <- h * freturn[1]
+            //     for i in 0..1 do ydumb[i] <- y[i] + k2[i] / 2.
+            //     fn (t' + h / 2., ydumb, freturn)
+            //     k3[0] <- h * freturn[0]
+            //     k3[1] <- h * freturn[1]
+            //     for i in 0..1 do ydumb[i] <- y[i] + k3[i]
+            //     fn (t' + h, ydumb, freturn)
+            //     k4[0] <- h * freturn[0]
+            //     k4[1] <- h * freturn[1]
+            //     for i in 0..1 do y[i] <- y[i] + (k1[i] + 2. * (k2[i] + k3[i]) + k4[i]) / 6.
+            //     t' <- t' + h
+            // y[0]
         | PDE (a, b) -> failwith "not implemented yet"
         | _ -> failwith "not implemented yet"
             
@@ -747,3 +790,14 @@ module Evaluation =
         v.V <- ValueSome v.B
         yret[yret.Length - 1] <- eval m t f
             
+            
+    let evalvaluesXY (xret:array<float>)(yret:array<float>) (m:Maps) t f :unit =
+        let v = m.variables[t]
+        let dx = (v.B - v.A) / (float yret.Length)
+        v.V <- ValueSome v.A
+        for i in 0..yret.Length - 1 do
+            xret[i] <- v.V.Value
+            yret[i] <- eval m t f
+            v.V <- ValueSome (v.V.Value + dx)
+        v.V <- ValueSome v.B
+        yret[yret.Length - 1] <- eval m t f

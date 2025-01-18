@@ -463,6 +463,7 @@ module Views =
             let notation = ctx.useState true
             let tex_fns  = ctx.useState _tex_strs_i
             let vars_list = ctx.useState _vars
+            let skchart_state = ctx.useState skchart
         
             DockPanel.create [
                 DockPanel.lastChildFill true
@@ -775,7 +776,7 @@ module Views =
                     View.createGeneric<SKChartControl> []
                     |> View.withConstructorArgs [|skchart :> obj|]
                     // SKChartControl.create [
-                    //     SKChartControl.chart skchart
+                    //     SKChartControl.chart skchart_state.Current
                     //     SKChartControl.onSizeChanged (fun s ->
                     //         if skchart.IsSKChart2 then 
                     //             let c2 = skchart.AsSKChart2()

@@ -201,19 +201,32 @@ type Parser(source: string, symbols:Symbols) =
 
     and parseInt() = 
         ignore (nextToken())  // skip int and continue to braces
-        ignore (matchToken LeftBrace)
-        let a = parseExpr()
-        ignore (matchToken RightBrace)
 
-        ignore (matchToken LeftBrace)
-        let b = parseExpr()
-        ignore (matchToken RightBrace)
+        match current().Id with
+        | Accent | Underscore ->
+            let lhs = nextToken()
+            ignore (matchToken LeftBrace)
+            let lhs_expr = parseExpr()
+            ignore (matchToken RightBrace)
 
-        ignore (matchToken LeftBrace)
-        let f = parseExpr()
-        ignore (matchToken RightBrace)
+            let rhs = nextToken()
+            ignore (matchToken LeftBrace)
+            let rhs_expr = parseExpr()
+            ignore (matchToken RightBrace)
         
-        Int (a, b, f)
+
+            let a = if lhs.Id = TokenId.Accent then rhs_expr else lhs_expr
+            let b = if rhs.Id = TokenId.Underscore then lhs_expr else rhs_expr
+            // printfn "%s" (string a)
+            // printfn "%s" (string b)
+            let e = parseExpr()
+            let dx = nextToken()  // ignore the d part of the target string
+            Int (a, b, e, dx.Str[1..])
+        | _ -> 
+            let e = parseExpr()
+            let dx = nextToken()  // ignore the d part of the target string
+            IntIndefinite (e, dx.Str[1..])        
+        
 
     and parseDiff() = 
         ignore (nextToken())  // skip ode/pde and continue to braces
@@ -222,10 +235,12 @@ type Parser(source: string, symbols:Symbols) =
         ignore (matchToken RightBrace)
 
         ignore (matchToken LeftBrace)
-        let lower = parseExpr()
+        // get target, it must be symbol        
+        // let t = match parseExpr() with | Symbol s -> s | _ -> failwith "must be symbol"
+        let t = nextToken()
         ignore (matchToken RightBrace)
 
-        Diff (upper, lower)
+        Diff (upper, t.Str)
 
     and parseODE() = 
         ignore (nextToken())  // skip ode/pde and continue to braces
@@ -234,10 +249,12 @@ type Parser(source: string, symbols:Symbols) =
         ignore (matchToken RightBrace)
 
         ignore (matchToken LeftBrace)
-        let lower = parseExpr()
+        // get target, it must be symbol        
+        // let t = match parseExpr() with | Symbol s -> s | _ -> failwith "must be symbol"
+        let t = nextToken()
         ignore (matchToken RightBrace)
 
-        ODE (upper, lower)
+        ODE (upper, t.Str)
         
     and parsePDE() = 
         ignore (nextToken())  // skip ode/pde and continue to braces
