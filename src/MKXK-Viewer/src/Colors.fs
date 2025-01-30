@@ -1,4 +1,4 @@
-﻿namespace RendererFS
+﻿namespace MKXK.Viewer
 
 
 type Color = uint

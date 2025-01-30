@@ -6,8 +6,8 @@ Just copy the fonts folder from KateX repository inside the tests folder.
 
 ```
 git clone https://github.com/raidenXR/mkxkFS.git
-cd mkxkFS/src/Renderer
-dotnet build
+cd mkxkFS/src/MKXK-Viewer
+dotnet build -c Release
 cd tests
 # copy the fonts folder here
 dotnet fsi renderer_test.fsx

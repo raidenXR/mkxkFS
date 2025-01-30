@@ -1,13 +1,22 @@
-namespace Dofexp
+namespace MKXK.DOE
 open System
 open System.Numerics
 open System.Globalization
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 
+type IMatrix =
+    abstract member I: int
+    abstract member J: int
 
-type Matrix<'T when 'T: equality>(entries:seq<'T>, I:int, J:int) =
-    let entries = Array.ofSeq entries
+type Matrix<'T when 'T: equality>(I:int, J:int, entries:array<'T>) =
+
+    new(I:int, J:int) = Matrix<'T>(I, J, Array.zeroCreate<'T>(I * J))
+
+    interface IMatrix with
+        member this.I = I
+        member this.J = J
+
     member x.I = I
     
     member x.J = J
@@ -17,8 +26,8 @@ type Matrix<'T when 'T: equality>(entries:seq<'T>, I:int, J:int) =
     member x.Entries = entries
     
     member x.Item  
-        with get(i:int, j:int) = entries[i * J + j]
-        and set(i:int, j:int) value = entries[i * J + j] <- value
+        with get(i:int, j:int) = entries[(i - 1) * J + (j - 1)]
+        and set(i:int, j:int) value = entries[(i - 1) * J + (j - 1)] <- value
 
     member x.Item
         with get(idx:int) = entries[idx]
@@ -30,6 +39,12 @@ type Matrix<'T when 'T: equality>(entries:seq<'T>, I:int, J:int) =
         for j in 0..J - 1 do
             res <- res || (entries[a * J + j] =  entries[b * J + j])
         res
+
+    member x.Values = entries
+
+    static member zeroCreate (I:int, J:int) =
+        let values = Array.zeroCreate (I * J)
+        Matrix<'T>(I, J, values)
 
 
 type Matrix2(I:int, J:int, entries:seq<float>) =
@@ -105,97 +120,157 @@ type Matrix4(entries:seq<float>, I:int, J:int, K:int, L:int) =
         and set(idx:int) value = entries[idx] <- value
 
 
+// module Factors =
+//     let increment (factors:array<float>) (lb:array<float>) (ub:array<float>) =
+//         for i = 1 to factors.Length - 1 do
+//             factors[0] <- factors[0] + 1
+//             if factors[i - 1] > ub[i - 1] then
+//                 factors[i - 1] <- lb[i - 1]
+//                 factors[i] <- factorsi] + 1
+
+module Fib =
+    let fib3 n = 
+        match n with 
+        | 0 -> 0
+        | n -> 
+            let mutable last = 0
+            let mutable next = 1
+            for i in 1 .. (n - 1) do
+                let temp = last + next
+                last <- next
+                next <- temp
+            next
 
 type DesignMatrix =
     | Random of Matrix<byte>
     | Latin of Matrix<byte>
     | GreacoLatin of Matrix<uint16>
-    | DesignMatrix of Matrix<byte>
+    | DesignMatrix of Matrix<float>    
 
     override x.ToString() =
         match x with
         | Random m -> 
             let sb = System.Text.StringBuilder(1024)
-            for i in 0..m.I - 1 do
-                for j in 0..m.J - 1 do
-                    let c = if m[i,j] < 128uy then '-' else '+'
+            for i in 1..m.I do
+                ignore (sb.Append $"[{i}]: ")
+                for j in 1..m.J do
+                    let c = if m[i,j] = 0uy then '-' else '+'
                     ignore (sb.Append (c.ToString().PadLeft(4)))
                 ignore (sb.AppendLine "")
             string sb
         | Latin m -> 
+            if m.I <> m.J then failwith "must be a N x N matrix - square"
             let sb = System.Text.StringBuilder(1024)
-            for i in 0..m.I - 1 do
-                for j in 0..m.J - 1 do
-                    let dx = byte (255 / m.J)
-                    let mutable a = dx
-                    let mutable A = byte 'A'
-                    while a < m[i,j] do A <- A + 1uy; a <- a + dx
-                    let cfmt = char A
-                    ignore (sb.Append (cfmt.ToString().PadLeft(4)))
+            for i in 1..m.I do
+                ignore (sb.Append $"[{i}]: ")
+                for j in 1..m.J do
+                    let c = char (m[i,j]) + 'A'
+                    ignore (sb.Append (c.ToString().PadLeft(4)))
                 ignore (sb.AppendLine "")
             string sb                    
         | GreacoLatin m -> 
             if m.I <> m.J then failwith "must be a N x N matrix - square"
             let sb = System.Text.StringBuilder()
-            for i in 0..m.I - 1 do
-                for j in 0..m.J - 1 do
-                    let ptr0 = byte (m[i,j] &&& 0x00ffus)
-                    let ptr1 = byte (m[i,j] >>> 8)
-                    let dx = byte (255 / m.J)
-                    let mutable a = dx
-                    let mutable b = dx
-                    let mutable A = byte 'A'
-                    let mutable B = 1uy
-                    while a < ptr0 do A <- A + 1uy; a <- a + dx 
-                    while b < ptr1 do B <- B + 1uy; b <- b + dx 
-                    let Afmt = char A
-                    ignore (sb.Append ($"{Afmt}{B}".PadLeft(5)))
-                    // ignore (sb.Append ($"{ptr0}-{ptr1}  "))
+            for i in 1..m.I do
+                ignore (sb.Append $"[{i}]: ")
+                for j in 1..m.J do
+                    let ptr0 = byte (m[i,j] >>> 8)
+                    let ptr1 = byte (m[i,j] &&& 0x00ffus)
+                    let A = char (ptr0) + 'A'
+                    let B = ptr1
+                    ignore (sb.Append ($"{A}{B}".PadLeft(5)))
                 ignore (sb.AppendLine "")
             string sb            
         | DesignMatrix m ->
             let sb = System.Text.StringBuilder(1024)
-            for i in 0..m.I - 1 do
-                for j in 0..m.J - 1 do
-                    let c = if m[i,j] > 0uy then 1 else 0
+            for i in 1..m.I do
+                for j in 1..m.J do
+                    let c = if m[i,j] > 0 then 1 else 0
                     ignore (sb.Append (c.ToString().PadLeft(4)))
                 ignore (sb.AppendLine "")
             string sb
 
 
+    static member private create<'T> (I:int) (J:int) = 
+        match Marshal.SizeOf(typedefof<'T>) with
+        | 1 -> 
+            let buffer = Array.init<byte> (I * J) (fun i -> byte i)
+            Random.Shared.Shuffle buffer
+            Matrix<byte>(I, J, buffer) :> IMatrix
+        | 2 -> 
+            let buffer = Array.init<uint16> (I * J) (fun i -> uint16 i)
+            Random.Shared.Shuffle buffer
+            Matrix<uint16>(I, J, buffer) :> IMatrix
+        | 4 -> 
+            let buffer = Array.init<int32> (I * J) (fun i -> int32 i)
+            Random.Shared.Shuffle buffer
+            Matrix<int32>(I, J, buffer) :> IMatrix
+        | 8 -> 
+            let buffer = Array.init<float> (I * J) (fun i -> float i)
+            Random.Shared.Shuffle buffer
+            Matrix<float>(I, J, buffer) :> IMatrix
+        | _ -> failwith "not appropriate 'T, it must be numeric"
+        // let d = Matrix<byte>(Array.zeroCreate<byte>(m.I * m.J), m.I, m.J)
+        // for j in 0..m.J - 1 do
+        //     let mutable _max = m[0,j]
+        //     for i in 0..m.I - 1 do 
+        //         _max <- max _max m[i,j]
+        //     for i in 0..m.I - 1 do 
+        //         d[i,j] <- if _max = m[i,j] then 255uy else 0uy
+        // d            
+
     /// create a random square design matrix
-    static member createRandom I J =
-        let r = System.Random()
-        let m = Matrix<byte>(Array.zeroCreate<byte>(I * J), I, J)
-        r.NextBytes(m.Entries)
-        Random m
+    static member random I J =
+        let I_total = (pown J (J - 1)) - 1
+        let m = Matrix<byte>(I_total, J)
+
+        let values = Array.zeroCreate<byte> J
+
+        for i in 0..I_total - 1 do
+            for j in 1..J - 1 do
+                if values[j - 1] > 1uy then
+                    values[j - 1] <- 0uy
+                    values[j] <- values[j] + 1uy                    
+            System.Buffer.BlockCopy(values, 0, m.Entries, i * J, J)
+            values[0] <- values[0] + 1uy
+        Random.Shared.Shuffle(m.Entries)
+        Random (Matrix<byte>(I, J, m.Entries[0..I * J - 1]))
+        
 
     /// create a Latin square design matrix
-    static member createLatin I J =
-        if I <> J then failwith "must be a N x N matrix - square"
-        let r = System.Random()
-        let m = Matrix<byte>(Array.zeroCreate<byte>(I * J), I, J)
-        r.NextBytes(m.Entries)
+    static member latin M =
+        let I = M
+        let J = M
+        let m = Matrix<byte>(I, J)
+        for i in 1..I do
+            for j in 1..J do
+                let a = if i + j > J + 1 then i + j - J else i + j 
+                m[i,j] <- byte (a - 2)
         Latin m
 
     /// create a Greaco-Latin square design matrix
-    static member createGreacoLatin I J =
-        if I <> J then failwith "must be a N x N matrix - square"
-        let r = System.Random()
-        let m = Matrix<uint16>(Array.zeroCreate<uint16>(I * J), I, J)        
-        let s = Span(m.Entries) 
-        r.NextBytes (MemoryMarshal.AsBytes s)
+    static member greacoLatin M =
+        let I = M
+        let J = M
+        let m = Matrix<uint16>(I, J)
+        let v = [|for i in 1..J -> i|]
+        for i in 1..I do
+            Random.Shared.Shuffle v
+            for j in 1..J do
+                let a = if i + j > J + 1 then i + j - J else i + j 
+                let b = v[j - 1]
+                m[i,j] <- uint16 (((a - 2) <<< 8) ||| b)        
         GreacoLatin m
 
-    static member createDesignMatrix (m:Matrix<'T>) = 
-        let d = Matrix<byte>(Array.zeroCreate<byte>(m.I * m.J), m.I, m.J)
+    static member design (m:Matrix<'T>) =
+        let d = Matrix<byte>(m.I, m.J, Array.zeroCreate<byte>(m.I * m.J))
         for j in 0..m.J - 1 do
             let mutable _max = m[0,j]
             for i in 0..m.I - 1 do 
                 _max <- max _max m[i,j]
             for i in 0..m.I - 1 do 
                 d[i,j] <- if _max = m[i,j] then 255uy else 0uy
-        d            
+        d                    
         
 
 module Matrix2 =

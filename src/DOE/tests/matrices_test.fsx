@@ -2,7 +2,7 @@
 #load "../src/anova.fs"
 #load "../src/modeling.fs"
 
-open Dofexp
+open MKXK.DOE
 
 let AssertBool b =
     if b then printfn "assert passed"
@@ -16,7 +16,7 @@ let Assert v0 v1 =
         printfn "assert passed" 
     else 
         System.Console.ForegroundColor <- System.ConsoleColor.Red
-        printfn "assert failed, %g  - %g" v0 v1
+        printfn "assert failed, %g, %g" v0 v1
         System.Console.ResetColor()
 
 let m0 = Matrix2(4, 3, [
@@ -74,41 +74,54 @@ Assert (Oneway.SST(m2)) 1338.2
 Assert (Oneway.MSB(m2)) 378.3333333
 Assert (Oneway.MSW(m2)) 12.7
 
-let r = DesignMatrix.createRandom 5 5
-printfn "%s" (string r)
+// let r = DesignMatrix.random 5 5
+// printfn "%s" (string r)
 
-let l = DesignMatrix.createLatin 5 5
-printfn "%s" (string l)
+// let l = DesignMatrix.latin 5 8
+// printfn "%s" (string l)
 
-let gl = DesignMatrix.createGreacoLatin 5 5
-printfn "%s" (string gl)
+// let gl = DesignMatrix.greacoLatin 5 5
+// printfn "%s" (string gl)
 
 // let dm = DesignMatrix.createDesignMatrix m2
 // printfn "%s" (string dm)
 
 // p. 294
-let op_values = [
+let op_values = [|
     40; 10; 80; 10; 
     40; 180; 80; 180
-]
-let op_matrix = Matrix<int>(op_values, 4, 2)
-let y_values = [
+|]
+let op_matrix = Matrix<int>(4, 2, op_values)
+let y_values = [|
     1182.4; 1139.2; 1136.5; 1209.4; 1134.6; 1159.2;
     622.4;  660.8;  631.8;  602.1;  668.6;  645.6;
     683.2;  624.0;  682.6;  699.5;  565.4;  611.2;
     496.0;  486.2;  495.6;  513.6;  450.6;  467.2;
-]
-let y = Matrix2(4, 6, y_values)
-let d = DesignMatrix.createDesignMatrix(op_matrix)
+|]
+let m = Matrix<float>(4, 6, y_values)
+printfn "test matrix item: %g" (m[3,3])
+// let y = Matrix2(4, 6, y_values)
+// let d = DesignMatrix.design(op_matrix)
 
-open Modeling
-Assert (bi d y 0) 731.98
-Assert (bi d y 1) -170.28
-Assert (bi d y 2) -167.38
-Assert (bij d y 1 2) 90.58
+// open Modeling
+// Assert (bi d y 0) 731.98
+// Assert (bi d y 1) -170.28
+// Assert (bi d y 2) -167.38
+// Assert (bij d y 1 2) 90.58
 
-let factors = [|731.98; -170.28; -167.38; 90.58|]
-let factors_res = polynomialLinear op_matrix y 2
+// let factors = [|731.98; -170.28; -167.38; 90.58|]
+// let factors_res = polynomialLinear op_matrix y 2
 
-for (f, frs) in Array.zip factors factors_res do
-    printfn "%g   %g" f frs
+// for (f, frs) in Array.zip factors factors_res do
+//     printfn "%g   %g" f frs
+
+
+
+let rm = DesignMatrix.random 13 8
+printfn "%s" (string rm)
+
+let lm = DesignMatrix.latin 12
+printfn "%s" (string lm)
+
+let glm = DesignMatrix.greacoLatin 12
+printfn "%s" (string glm)

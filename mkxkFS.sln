@@ -9,11 +9,11 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Notation", "src\Notation\No
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Renderer", "src\Renderer\Renderer.fsproj", "{45E7EE6F-20E2-487C-A488-859D59AC2240}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "doefxp", "src\dofexp\doefxp.fsproj", "{6AD25F1E-035E-48F7-AA41-2B345E6FF5EC}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B2A70BC9-2123-4ED3-A053-09EDB1F2B35F}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "SKCharts", "src\SKCharts\SKCharts.fsproj", "{376B62FE-22A8-4806-B0C7-FF5265AED0BA}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "DOE", "src\DOE\DOE.fsproj", "{660D9949-8DFB-41ED-9E38-F634EDAACFA7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,8 +44,13 @@ Global
 		{376B62FE-22A8-4806-B0C7-FF5265AED0BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{376B62FE-22A8-4806-B0C7-FF5265AED0BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{376B62FE-22A8-4806-B0C7-FF5265AED0BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{660D9949-8DFB-41ED-9E38-F634EDAACFA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{660D9949-8DFB-41ED-9E38-F634EDAACFA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{660D9949-8DFB-41ED-9E38-F634EDAACFA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{660D9949-8DFB-41ED-9E38-F634EDAACFA7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{376B62FE-22A8-4806-B0C7-FF5265AED0BA} = {B2A70BC9-2123-4ED3-A053-09EDB1F2B35F}
+		{660D9949-8DFB-41ED-9E38-F634EDAACFA7} = {B2A70BC9-2123-4ED3-A053-09EDB1F2B35F}
 	EndGlobalSection
 EndGlobal

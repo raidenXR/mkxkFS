@@ -1,4 +1,4 @@
-﻿namespace RendererFS
+﻿namespace MKXK.Viewer
 
 open Avalonia
 open Avalonia.Controls.Primitives
@@ -17,7 +17,7 @@ open System
 open MKXK
 open SkiaSharp
 open SKCharts
-
+open SKCharts.Avalonia
 
 
 module Converter =
@@ -62,22 +62,6 @@ module Views =
         static member onSizeChanged<'t when 't :> ContentControl>(func: SizeChangedEventArgs -> unit, ?subPatchOptions) :IAttr<'t> =
             AttrBuilder<'t>.CreateSubscription<SizeChangedEventArgs>(ContentControl.SizeChangedEvent, func, ?subPatchOptions = subPatchOptions)
 
-    type SKChartControl with
-        static member create(attrs: IAttr<SKChartControl> list): IView<SKChartControl> =
-            ViewBuilder.Create<SKChartControl>(attrs)
-
-        static member chartProperty : StyledProperty<SKChart> =
-            AvaloniaProperty.Register<SKChartControl, SKChart>("SKChart")
-           
-
-        static member backgroundProperty : StyledProperty<SKColor> =
-            AvaloniaProperty.Register<SKChartControl, SKColor>("Background")
-            
-        static member chart<'t when 't :> SKChartControl>(value:SKChart) : IAttr<'t> =
-            AttrBuilder<'t>.CreateProperty<SKChart>(SKChartControl.chartProperty, value, ValueNone)
-           
-        static member background<'t when 't :> SKChartControl>(value:SKColor) : IAttr<'t> =
-            AttrBuilder<'t>.CreateProperty<SKColor>(SKChartControl.backgroundProperty, value, ValueNone)
 
     let private c2 = new SKChart2([], W = 900f, H = 680f)
     let private c3 = new SKChart3([], Colormap.Hot, W = 900f, H = 680f)
@@ -797,7 +781,7 @@ module Views =
     type MainWindow() =
         inherit HostWindow()
         do
-            base.Title <- "MKXK"
+            base.Title <- "MainWindow"
         
 
     type App() =

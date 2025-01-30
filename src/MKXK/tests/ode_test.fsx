@@ -42,11 +42,11 @@ let xvalues = Array.zeroCreate<float> 100
 let yvalues = Array.zeroCreate<float> 100
 Evaluation.evalvaluesXY xvalues yvalues maps "t" f1
 
-let gnu = Gnuplot()
-gnu
-|> Gnuplot.datablockXY xvalues yvalues "T"
-|>> "plot $T"
-|> Gnuplot.run
+// let gnu = Gnuplot()
+// gnu
+// |> Gnuplot.datablockXY xvalues yvalues "T"
+// |>> "plot $T"
+// |> Gnuplot.run
 
 // printfn "%A" yvalues 
 // printfn "%A" xvalues 
@@ -54,7 +54,7 @@ gnu
 
 let xvalues2 = Array.zeroCreate<float> 100
 let yvalues2 = Array.zeroCreate<float> 100
-Evaluation.evalvaluesXY xvalues yvalues maps "t" f3
+Evaluation.evalvaluesXY xvalues yvalues maps "t" f2
 
 let gnu2 = Gnuplot()
 gnu2

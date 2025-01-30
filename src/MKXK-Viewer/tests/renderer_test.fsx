@@ -1,6 +1,7 @@
-#r "../bin/Debug/net8.0/mkxkFS.dll"
-#r "../bin/Debug/net8.0/Renderer.dll"
-#r "../bin/Debug/net8.0/SKCharts.dll"
+#r "../bin/Release/net8.0/mkxkFS.dll"
+#r "../bin/Release/net8.0/mkxk-viewer.dll"
+#r "../bin/Release/net8.0/SKCharts.dll"
+#r "../bin/Release/net8.0/SKCharts.Avalonia.dll"
 
 #r "nuget: Avalonia, 11.2.3"
 #r "nuget: Avalonia.Desktop, 11.2.3"
@@ -11,7 +12,9 @@
 open System
 open MKXK
 open ExprTree
-open RendererFS
+open MKXK.Viewer
+open SKCharts
+open SKCharts.Avalonia
 open SkiaSharp
 
 
@@ -92,7 +95,7 @@ let models = [
     "z(x)", Models.createTeXModel maps f6str "C_A" Colors.Blue 4.0f
 ]
 
-let r = Renderer()
+let r = Renderer("Renderer test")
 // r.Run(fun _ -> Views.view2(maps, models))
 r.RunParallel(fun _ -> Views.view2(maps, models))
 

@@ -1,4 +1,4 @@
-namespace RendererFS
+namespace MKXK.Viewer
 
 open System
 open MKXK

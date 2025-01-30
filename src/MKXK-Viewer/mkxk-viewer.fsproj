@@ -2,16 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="src/Colors.fs" />
-    <Compile Include="src/skchartcontrols.fs" />
     <Compile Include="src/models.fs" />
     <Compile Include="src/Views.fs" />
-    <Compile Include="src/Renderer.fs" />
+    <Compile Include="src/mkxkviewer.fs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -22,7 +21,8 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SKCharts\SKCharts.fsproj" />
+    <ProjectReference Include="..\SKCharts\SKCharts\SKCharts.fsproj" />
+    <ProjectReference Include="..\SKCharts\SKCharts.Avalonia\SKCharts.Avalonia.fsproj" />
     <ProjectReference Include="..\Notation\Notation.fsproj" />
     <ProjectReference Include="..\MKXK\mkxkFS.fsproj" />
   </ItemGroup>

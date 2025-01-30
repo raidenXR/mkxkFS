@@ -1,4 +1,4 @@
-﻿namespace RendererFS
+﻿namespace MKXK.Viewer
 
 open System
 open MKXK
@@ -27,7 +27,7 @@ type App<'T when 'T :> Component and 'T : (new : unit -> 'T)>() =
         match this.ApplicationLifetime with
         | :? IClassicDesktopStyleApplicationLifetime as desktop -> 
             desktop.MainWindow <- new Window()
-            desktop.MainWindow.Title <- "MKXK"
+            desktop.MainWindow.Title <- "MKXK-Viewer"
             desktop.MainWindow.Content <- new 'T()
         | _ -> ()
 
@@ -40,9 +40,11 @@ type Renderer<'T when 'T :> Component and 'T : (new : unit -> 'T)>() =
             .StartWithClassicDesktopLifetime([||])
 
 
-type Renderer() =
+type Renderer(wndtitle:string) =
     let mutable wnd: Window = null
     let mutable thread: System.Threading.Thread = null    
+
+    new() = Renderer("MKXK-Viewer")
 
 
     /// componentfn: function that returns a Component to be used as content of the MainWindow
@@ -58,6 +60,7 @@ type Renderer() =
             if Application.Current <> null then
                 match Application.Current.ApplicationLifetime with
                 | :? IClassicDesktopStyleApplicationLifetime as desktop -> 
+                    Avalonia.Threading.Dispatcher.UIThread.Invoke (fun _ -> desktop.MainWindow.Title <- wndtitle)                
                     Avalonia.Threading.Dispatcher.UIThread.Invoke (fun _ -> desktop.MainWindow.Content <- componentfn ())                
                 | _ -> ()
             else 
@@ -94,10 +97,10 @@ type Renderer() =
             if app = null then app <- Application.Current
             if app <> null then
                 match app.ApplicationLifetime with
-                | :? IClassicDesktopStyleApplicationLifetime as desktop -> wnd <- desktop.MainWindow
+                | :? IClassicDesktopStyleApplicationLifetime as desktop -> wnd <- desktop.MainWindow;
                 | _ -> ()
                 
-        Avalonia.Threading.Dispatcher.UIThread.Invoke (fun _ -> wnd.Content <- componentfn ())
+        Avalonia.Threading.Dispatcher.UIThread.Invoke (fun _ -> wnd.Title <- wndtitle; wnd.Content <- componentfn ())
 
 
     member x.Close() =

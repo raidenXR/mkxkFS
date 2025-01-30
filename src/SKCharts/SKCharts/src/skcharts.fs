@@ -112,6 +112,14 @@ type SKChart2(models':list<string * Model2.Model>) =
             for i in 1..models.Count - 1 do 
                 b <- Model2.Bounds.compare (Model2.Bounds.ofModel models[i]) b
             b
+
+    /// cache only the y - values
+    /// use this method for rolling skchart2
+    let get_bounds_cached_y () =
+        let a = get_bounds_cached ()
+        let b = get_bounds ()
+        // {xmin = b.xmin; xmax = b.xmax; ymin = a.ymin; ymax = a.ymax}
+        {b with ymin = a.ymin; ymax = a.ymax}
         
     /// updates bounds, applies noramization and transformation
     let update_state a =
@@ -314,6 +322,18 @@ type SKChart2(models':list<string * Model2.Model>) =
         
     member this.UpdateCachedBounds() =
         bounds <- get_bounds_cached ()
+        update_grid ()
+        update_axes ()
+        update_ticks ()
+        update_labels ()
+        update_models ()
+
+        let t = Matrix3x2.CreateTranslation(0.6f, 0.6f) * Matrix3x2.CreateScale(0.5f, 0.5f)
+        let p = Vector2.Transform(Vector2(1f, 0.8f), t)
+        legend <- cast p
+        
+    member this.UpdateCachedBoundsY() =
+        bounds <- get_bounds_cached_y ()
         update_grid ()
         update_axes ()
         update_ticks ()

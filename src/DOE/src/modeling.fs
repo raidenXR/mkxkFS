@@ -1,4 +1,4 @@
-namespace Dofexp
+namespace MKXK.DOE
 
 module Modeling =
 
@@ -64,7 +64,7 @@ module Modeling =
         let reactions = C op_matrix.J deg
         let factors = Array.zeroCreate<float> (op_matrix.J + reactions + 1) // + 1 == b0
         let entries = Array.zeroCreate<byte> (op_matrix.Entries.Length)
-        let dmatrix = DesignMatrix.createDesignMatrix(op_matrix)
+        let dmatrix = DesignMatrix.design(op_matrix)
 
         let mutable idx = 0
         while idx <= op_matrix.J do factors[idx] <- bi dmatrix y idx; idx <- idx + 1

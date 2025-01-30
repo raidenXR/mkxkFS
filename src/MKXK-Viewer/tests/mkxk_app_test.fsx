@@ -1,8 +1,9 @@
 #r "nuget: System.Drawing.Common, 8.0.0"
-#r "../bin/Debug/net8.0/mkxkFS.dll"
-#r "../bin/Debug/net8.0/Notation.dll"
-#r "../bin/Debug/net8.0/Renderer.dll"
-#r "../bin/Debug/net8.0/SKCharts.dll"
+#r "../bin/Release/net8.0/mkxkFS.dll"
+#r "../bin/Release/net8.0/Notation.dll"
+#r "../bin/Release/net8.0/mkxk-viewer.dll"
+#r "../bin/Release/net8.0/SKCharts.dll"
+#r "../bin/Release/net8.0/SKCharts.Avalonia.dll"
 
 #r "nuget: Avalonia, 11.2.3"
 #r "nuget: Avalonia.Desktop, 11.2.3"
@@ -15,7 +16,9 @@ open System
 open System.IO
 open MKXK
 open ExprTree
-open RendererFS
+open SKCharts
+open SKCharts.Avalonia
+open MKXK.Viewer
 
 
 // create some table of variables
@@ -151,6 +154,6 @@ let models = [
     "f10(x)", Models.createTeXModel maps fns_optimized[9] "C_A" Colors.Fuchsia 2.0f
 ]
 
-let renderer = Renderer()
+let renderer = Renderer("MKXK-Viewer")
 renderer.RunParallel(fun _ -> Views.view2(maps, models))
 Console.ReadKey()

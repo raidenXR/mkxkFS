@@ -1,4 +1,4 @@
-namespace Dofexp
+namespace MKXK.DOE
 
 module Oneway =
     let SSB (m:Matrix2) =

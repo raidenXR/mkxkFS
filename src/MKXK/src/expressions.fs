@@ -684,20 +684,14 @@ module Evaluation =
         | IntIndefinite (f, target) ->
             failwith "For IntIndefinite, algorithm from CAS book, p.206 must be implemented"
             // let v = m.variables[target]
-            // let h = 1000.
-            // let dx = (v.B - v.A) / h
-
             // let V = match v.V with | ValueSome vs -> vs | ValueNone -> (v.B - v.A) / 2. + v.A
+            // let dx = (v.B - v.A) / 100.
+            // let a = V - dx * 0.5
+            // let b = V + dx * 0.5
+            // use the same logic as differentiation, but for this point xi, calculate the integral
+            // let e = Int (a, b, f, target)
+            // eval m t e
 
-            // m.variables[target].V <- ValueSome (V + 0.5 * dx)
-            // let e_plus = eval m target f
-
-            // m.variables[target].V <- ValueSome (V - 0.5 * dx) 
-            // let e_minus = eval m target f
-
-            // let da = e_minus * dx
-            // let db = (e_plus - e_minus) * dx * 0.5
-            // da + db
         | Diff (f, target) -> 
             let h = 1000.
             let v = m.variables[target]
@@ -780,24 +774,24 @@ module Evaluation =
             
 
     /// apply the eval function on a series of x-values and store the results on a y-array (target)
-    let evalvalues (yret:array<float>) (m:Maps) t f :unit =
+    let evalvaluesY (yret:array<float>) (m:Maps) t f :unit =
         let v = m.variables[t]
         let dx = (v.B - v.A) / (float yret.Length)
-        v.V <- ValueSome v.A
+        
         for i in 0..yret.Length - 1 do
+            let x = v.A + dx * (float i)
+            m.variables[t].V <- ValueSome x
             yret[i] <- eval m t f
-            v.V <- ValueSome (v.V.Value + dx)
-        v.V <- ValueSome v.B
-        yret[yret.Length - 1] <- eval m t f
             
             
-    let evalvaluesXY (xret:array<float>)(yret:array<float>) (m:Maps) t f :unit =
+    /// apply the eval function on a series of x-values and store the results on a y-array (target)
+    let evalvaluesXY (xret:array<float>) (yret:array<float>) (m:Maps) t f :unit =
         let v = m.variables[t]
         let dx = (v.B - v.A) / (float yret.Length)
-        v.V <- ValueSome v.A
+        
         for i in 0..yret.Length - 1 do
-            xret[i] <- v.V.Value
+            let x = v.A + dx * (float i)
+            m.variables[t].V <- ValueSome x
+            xret[i] <- x
             yret[i] <- eval m t f
-            v.V <- ValueSome (v.V.Value + dx)
-        v.V <- ValueSome v.B
-        yret[yret.Length - 1] <- eval m t f
+            
