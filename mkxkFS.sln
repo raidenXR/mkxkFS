@@ -7,7 +7,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "mkxkFS", "src\MKXK\mkxkFS.f
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Notation", "src\Notation\Notation.fsproj", "{1EEF9AEB-DA34-467A-AC96-E38956302887}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Renderer", "src\Renderer\Renderer.fsproj", "{45E7EE6F-20E2-487C-A488-859D59AC2240}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Renderer", "src\MKXK-Viewer\mkxk-viewer.fsproj", "{45E7EE6F-20E2-487C-A488-859D59AC2240}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B2A70BC9-2123-4ED3-A053-09EDB1F2B35F}"
 EndProject
