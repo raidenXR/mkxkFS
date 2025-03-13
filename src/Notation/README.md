@@ -1,7 +1,15 @@
-### Description
+### Notation
 
 this project parses simple TeX string and produces *.png* images of the mathematical formulas.   
 On top of that, it **can** compile via AoT as native lib, and be utilized from other languages, besides .*NET*.   
+On `tests/viewnotation_test.fsx` there is a demo app for showcasing this project.   
+Run it with commands
+
+```
+cd tests
+dotnet fsi viewnotation_test.fsx
+```
+
 
 #### Build
 
@@ -67,11 +75,14 @@ zig_unmanaged_caller/build.zig
 
 #### Build and run the 'zig unmanaged caller'
 
+(Zig 0.14 stable is recommended)
+
 ```
 cd tests/zig_unmanaged_caller
 zig build
 cd zig-out/bin
 # copy the fonts folder in this directory before executing the program
+# copy the libs folder in this directory before executing the program
 ./zig_unmanaged_caller
 ls -l
 ```
