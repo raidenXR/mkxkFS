@@ -9,7 +9,7 @@ Symbols are composed of three maps. Constant map, Variables map, Functions map.
 
 First define a table of constants and their values:
 
-```
+```fs
 // create some table of constants
 let cons = Map [
     "N_A", 10.05
@@ -26,8 +26,7 @@ let cons = Map [
 ```
 
 and a table of variables:
-```
-
+```fs
 // create some table of variables
 let vars = 
     [
@@ -50,7 +49,7 @@ let vars =
 Define some string literals of TeX formulas, that are compounds of the previously   
 defined constants and variables and parse those string into ASTs.
 
-```
+```fs
 // define some tex strings
 let [<Literal>] f0str = "f(x) = N_A + 4.5 - (C_A * 4.3) / C_B - 8^2"
 let [<Literal>] f1str = "g(x) = T + k_A - (C_A * 4.3) / C_B - t^2"
@@ -82,7 +81,7 @@ on top of that is implements some utility classes, such as HtmlBuilder and Gnupl
 HtmlBuilder class for creating simple html files, as a file format for supporting   
 text, list, headers tables, formulas and images.    
 
-```
+```fs
 let html = HtmlBuilder()
 html 
 |> header 2 "some header"
@@ -112,7 +111,7 @@ As a result, it supports the gnuplot syntax as is.
 
 More examples can be found over `tests/gnuplot_test.fsx`
 
-```
+```fs
 let gnu2 = Gnuplot("tests_output/images/image2.png")
 gnu2
 |>> "set terminal pngcairo  transparent enhanced font 'arial,10' fontscale 1.0 size 600, 400" 

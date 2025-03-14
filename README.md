@@ -5,28 +5,28 @@ This `.sln` contains a collection of `.fsproj`.
 - MKXK
 - MKXK-Viewer
 
-**P.S.** In general the .fsproj directory contain `\tests` subdirectories with .fsx scritps.   
-Those scripts are used both as tests, that things did not break during development,  
+**P.S.** In general the .fsproj directory contain `\tests` subdirectories with .fsx scripts.   
+Those scripts are used both as tests, to check that things did not break during development,  
 and as **examples**.   
 
 
 ### Notation
 
-A very plain library for parsing simple LaTeX string of mathematical formulas and by leveraging   
-SkiaSharp, it writes .png images of those notations over some Stream.   
+A very plain library for parsing simple LaTeX string of mathematical formulas, built with   
+SkiaSharp. It writes .png images of those notations over some Stream.   
 
 ![image](images/notation_parser.png)
 
-On top of that, it also contains a demo app in `tests/viewnotation_test.fsx` script.
+It also contains a demo app in `tests/viewnotation_test.fsx` script, for testing its notation capabilities.
 
 ### SKCharts
 
-A simple charting library, it supports 2d charts and 3d surfaces. It is implemented with SkiaSharp and   
+A simple charting library. It supports 2d charts and 3d surfaces. It is implemented with SkiaSharp and   
 draws on a SKCanvas, which means it can be used wherever a SKSurface is available.   
-It also contains an implenetation for AvaloniaUI as a AvaloniaControl.   
+It also contains an implenetation for AvaloniaUI as an AvaloniaControl.   
 On top of that, as in the case on `Notation.fsproj` it could potential be compiled   
-AoT, and by using `[<NativeCallersOnly>]` (look at src/Notation/README.md) be called  
-from other languages outside of dotnet. 
+with AoT, and by using `[<NativeCallersOnly>]` (look at src/Notation/README.md for an example) be called  
+from other languages outside of dotnet.  
 
 ![](images/skcharts.png)
 
@@ -34,11 +34,11 @@ from other languages outside of dotnet.
 
 A library that parses LaTeX mathematical formulas, it creates ASTs (abstract syntax trees) and can    
 evaluate those trees numerically. It can also create random AST. This library is meant as a symbolic   
-regression project. However, it also contains other helpful utilities as `MKXK/src/Gnuplot.fs` which  
+regression project. However, it also contains other helpful utilities such as `MKXK/src/Gnuplot.fs` which  
 is a simple class for easily integrating Gnuplot from F# code.    
 Its purpose is to help with modeling processes (as in some laboratory experiments), as a tool.  
 
-```
+```fs
 let gnu4 = Gnuplot("tests_output/images/image4.png")
 gnu4
 |>> "set terminal pngcairo  transparent enhanced font 'arial,10' fontscale 1.0 size 600, 400 "
@@ -74,7 +74,7 @@ gnu4
 
 ### MKXK-Viewer
 
-It references all the aforementioned .fsproj, in order to deliver a visualization tool of the ASTs   
+It references all the aforementioned `.fsproj`s, in order to deliver a visualization tool for the ASTs   
 and to dynamically affect the functions-formulas-ASTs. It is mostly a phase diagram, that supports both  
 2D charts and 3D surfaces on the generated ASTs, that can interchange based the selected variables to  
 evaluate against. On top of that it integrates the mathematical notation of those ASTs   
