@@ -11,44 +11,45 @@ type FnDescription = {
     err: float
 }
 
-type TokenIdProbs = {
-        Pnumber: int
-        Pconstant: int
-        Pvariable: int
-        Pfunction: int
-        Pbinary: int
-        Punary: int
-        Pparen: int
-        Pfrac: int
-        Psum: int
-        Pprod: int
-        Pint: int
-        Pdiff: int
-    } 
-    with 
-        static member Default = {
-            Pnumber = 10
-            Pconstant = 10
-            Pvariable = 20
-            Pfunction = 10
-            Pbinary = 25
-            Punary = 15
-            Pparen = 10
-            Pfrac = 10
-            Psum = 0
-            Pprod = 0
-            Pint = 0
-            Pdiff = 0
-        }
-        member x.ToArray() = Array.map float [|
-            x.Pnumber; x.Pconstant; x.Pvariable; x.Pfunction
-            x.Pbinary; x.Punary; x.Pparen; x.Pfrac
-            x.Psum; x.Pprod; x.Pint; x.Pdiff
-        |]
-
 
 module FnGeneration =
-    type FnGenerator(symbols:Symbols, probs:TokenIdProbs, lbound:float, ubound:float, maxcount: int) =
+    type Params = {
+            Pnumber: int
+            Pconstant: int
+            Pvariable: int
+            Pfunction: int
+            Pbinary: int
+            Punary: int
+            Pparen: int
+            Pfrac: int
+            Psum: int
+            Pprod: int
+            Pint: int
+            Pdiff: int
+        } 
+        with 
+            static member Default = {
+                Pnumber = 10
+                Pconstant = 10
+                Pvariable = 20
+                Pfunction = 10
+                Pbinary = 25
+                Punary = 15
+                Pparen = 10
+                Pfrac = 10
+                Psum = 0
+                Pprod = 0
+                Pint = 0
+                Pdiff = 0
+            }
+            member x.ToArray() = Array.map float [|
+                x.Pnumber; x.Pconstant; x.Pvariable; x.Pfunction
+                x.Pbinary; x.Punary; x.Pparen; x.Pfrac
+                x.Psum; x.Pprod; x.Pint; x.Pdiff
+            |]
+
+            
+    type FnGenerator(symbols:Symbols, probs:Params, lbound:float, ubound:float, maxcount: int) =
         let cons = Array.ofSeq symbols.constants
         let vars = Array.ofSeq symbols.variables
         let fns  = Array.ofSeq symbols.functions
@@ -206,7 +207,7 @@ module FnGeneration =
             Assignment (fn_name, binary)
 
 
-    let generatefn (fn_name:string) (symbols:Symbols) (probs:TokenIdProbs) lbound ubound maxnodes :Expr =
+    let generatefn (fn_name:string) (symbols:Symbols) (probs:Params) lbound ubound maxnodes :Expr =
         let generator = FnGenerator(symbols, probs, lbound, ubound, maxnodes)
         let mutable fn = generator.fngenerate fn_name
         while (ExprTree.variablesAll fn).Length < 2 do
@@ -244,10 +245,10 @@ module RMSE =
         Array.min errs            
 
     
-module Mutation =
+module FnMutation =
     open ExprTree
 
-    type OptimizationDesc = {
+    type Params = {
         maps: Maps
         x: array<float>
         y: array<float>        
@@ -296,7 +297,7 @@ module Mutation =
         op.Value <- pick ops r
 
 
-    let optimizefn (pars:OptimizationDesc) N lb ub t f :Expr*float =
+    let optimizefn (pars:Params) N lb ub t f :Expr*float =
         let cons = Array.ofSeq (pars.maps.constants.Keys)
         let vars = Array.ofSeq (pars.maps.variables.Keys)
         let fns  = Array.ofSeq (pars.maps.functions.Keys)
@@ -334,3 +335,26 @@ module Mutation =
                     fn_out <- copy fn
         fn_out, err       
                 
+
+
+module Define =
+    let symbols (cons:Map<string,float>) (vars:Map<string,Variable>) (fns:Map<string,Expr>) =
+        {constants = cons.Keys; variables = vars.Keys; functions = fns.Keys}
+
+    let variables (table:list<string * float * float>) =
+        table
+        |> List.map (fun (s,a,b) -> s,{A = a; B = b; V = ValueNone})
+        |> Map.ofList
+
+    let constants (table:list<string * float>) = Map.ofList table
+      
+    let functions (symbols':Symbols) (fns:list<string>) =
+        let mutable _pairs: list<string * Binder.BoundExpr> = []
+        let mutable _symbols = symbols'
+        for fn in fns do
+            let root = FnGeneration.fromTeX _symbols fn
+            let (Binder.Assignment (a,_)) = root
+            _symbols <- {_symbols with functions = Seq.append [a] _symbols.functions}        
+            _pairs <- List.append [(a,root)] _pairs
+        _pairs |> Map.ofList
+        

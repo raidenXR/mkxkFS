@@ -232,6 +232,14 @@ module Views =
             )                               
         ]                            
     
+    let count_models tx ty (models:array<Model>) =
+        let mutable n = 0
+        for model in models do
+            match model with
+            | RawModel3 (_tx,_ty,_,m) -> if _tx = tx && ty = _ty then n <- n + 1
+            | TeXModel (tex,f,b,c,s) when tex.Contains(tx) && tex.Contains(ty) -> n <- n + 1
+            | _ -> ()
+        n
     
 
     let view2 (maps:Maps, models':list<string * Model>) =
@@ -400,12 +408,13 @@ module Views =
                                             skchart.Args.Clear()
                                             c3.Models.Clear()
                                             c3.ResetBounds()
+                                            let n = count_models tx ty models
                                             let mutable i = 0
                                             for model in models do
                                                 match model with
                                                 | RawModel3 (_tx,_ty,_,m) -> if _tx = tx && ty = _ty then c3.Models.Add(m)
                                                 | TeXModel (tex,f,b,c,s) when tex.Contains(tx) && tex.Contains(ty) ->
-                                                    let m = Model3.createEmpty ChartType.Points 40 40 (SKColor(uint32 c)) s
+                                                    let m = Model3.createEmpty (if n = 1 then ChartType.Surface else ChartType.Points) 40 40 (SKColor(uint32 c)) s
                                                     evalModel3 maps tx ty b m
                                                     c3.Models.Add(m)
                                                     let arg = (tex,i,b)
@@ -493,12 +502,13 @@ module Views =
                                             skchart.Args.Clear()
                                             c3.Models.Clear()
                                             c3.ResetBounds()
+                                            let n = count_models tx ty models
                                             let mutable i = 0
                                             for model in models do
                                                 match model with
                                                 | RawModel3 (_tx,_ty,_,m) -> if _tx = tx && ty = _ty then c3.Models.Add(m)
                                                 | TeXModel (tex,f,b,c,s) when tex.Contains(tx) && tex.Contains(ty) ->
-                                                    let m = Model3.createEmpty ChartType.Points 40 40 (SKColor(uint32 c)) s
+                                                    let m = Model3.createEmpty (if n = 1 then ChartType.Surface else ChartType.Points) 40 40 (SKColor(uint32 c)) s
                                                     evalModel3 maps tx ty b m
                                                     c3.Models.Add(m)
                                                     let arg = (tex,i,b)
